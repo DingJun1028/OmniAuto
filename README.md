@@ -121,6 +121,15 @@ aistation/
 （解析→語音→視覺→渲染→發布→溯源），每個雲端模組（ElevenLabs / Runway /
 S3 / NCBDB）以虛線標註「設 key 啟用」→ 輸出 MP4 → Docker / CI / n8n 部署層。
 
+### 單支影片生成時序圖
+
+![AI Station 時序圖](diagrams/sequence.excalidraw)
+
+互動版：https://excalidraw.com/#json=m3ON1UO6ogF4MHzxNSEIZ,iTNL61SSEk5SgBnEp7V-nA
+
+說明：用戶或 n8n 經 Webhook 觸發 → Pipeline 中樞依序呼叫 模組群
+（解析 / 語音 / 視覺 / 渲染）產出 clips → Storage 存檔、DB 記溯源 → 回傳影片網址。
+
 ## 容器化部署 (Docker)
 
 ```bash
