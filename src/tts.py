@@ -4,9 +4,16 @@ Default: Microsoft edge-tts (free, no API key, multi-language). If
 ELEVENLABS_API_KEY is set, ElevenLabs is used instead. If the network
 TTS endpoint is unreachable, we transparently fall back to a generated
 silent audio track so the pipeline still produces a real MP4.
+
+Each synthesize() call returns a tuple:
+    (audio_path, boundaries, is_silent)
+where `boundaries` is a list of word-level timings:
+    {"start": float_seconds, "end": float_seconds, "text": str}
+These are consumed by the renderer to burn synced captions (IDEA.md 5).
 """
 from __future__ import annotations
 
+import asyncio
 import subprocess
 from pathlib import Path
 
@@ -17,6 +24,8 @@ EDGE_VOICE = "zh-TW-HsiaoChenNeural"  # swap to en-US-AriaNeural etc. if preferr
 
 # Rough speech rate for the offline fallback (chars per second).
 _CHARS_PER_SEC = 8
+
+_TICKS_PER_SEC = 10_000_000  # edge-tts boundary offsets are in 100-ns ticks
 
 
 def _silent_audio(text: str, out_path: Path) -> Path:
@@ -29,15 +38,32 @@ def _silent_audio(text: str, out_path: Path) -> Path:
     return out_path
 
 
-def _tts_edge(text: str, out_path: Path) -> Path:
-    import asyncio
+def _tts_edge(text: str, out_path: Path):
+    """Stream audio + capture word boundaries. Returns (Path, boundaries)."""
     import edge_tts
 
-    asyncio.run(edge_tts.Communicate(text, EDGE_VOICE).save(str(out_path)))
-    return out_path
+    boundaries: list[dict] = []
+
+    async def run():
+        comm = edge_tts.Communicate(text, EDGE_VOICE, boundary="WordBoundary")
+        with open(out_path, "wb") as f:
+            async for chunk in comm.stream():
+                if chunk["type"] == "audio":
+                    f.write(chunk["data"])
+                elif chunk["type"] == "WordBoundary":
+                    off = int(chunk["offset"])
+                    dur = int(chunk["duration"])
+                    boundaries.append({
+                        "start": off / _TICKS_PER_SEC,
+                        "end": (off + dur) / _TICKS_PER_SEC,
+                        "text": chunk["text"],
+                    })
+
+    asyncio.run(run())
+    return out_path, boundaries
 
 
-def _tts_elevenlabs(text: str, out_path: Path) -> Path:
+def _tts_elevenlabs(text: str, out_path: Path):
     import httpx
 
     resp = httpx.post(
@@ -48,18 +74,21 @@ def _tts_elevenlabs(text: str, out_path: Path) -> Path:
     )
     resp.raise_for_status()
     out_path.write_bytes(resp.content)
-    return out_path
+    return out_path, []  # ElevenLabs word timing not captured in free tier
 
 
-def synthesize(text: str, out_path: Path) -> Path:
-    """Synchronous wrapper used by the pipeline runner.
+def synthesize(text: str, out_path: Path):
+    """Return (audio_path, boundaries, is_silent).
 
     Tries the configured engine; on any failure, falls back to a silent
-    audio track so rendering still completes and a real MP4 is produced.
+    audio track (empty boundaries) so rendering still completes.
     """
     try:
         if USE_ELEVENLABS:
-            return _tts_elevenlabs(text, out_path)
-        return _tts_edge(text, out_path)
+            path, bounds = _tts_elevenlabs(text, out_path)
+        else:
+            path, bounds = _tts_edge(text, out_path)
+        return path, bounds, False
     except Exception:
-        return _silent_audio(text, out_path)
+        _silent_audio(text, out_path)
+        return out_path, [], True

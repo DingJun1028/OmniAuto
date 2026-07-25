@@ -41,7 +41,9 @@ def _hex(c: str) -> tuple:
 
 
 def gradient_frame(color1: str, color2: str, text: str, idx: int, total: int) -> Image.Image:
-    """Render one 16:9 gradient frame with caption text + progress pill."""
+    """Render one 16:9 gradient background. Caption text is NOT drawn here —
+    synced subtitles are burned by the renderer (IDEA.md 5). We keep only a
+    subtle progress pill so each shot's still is visually distinct."""
     w, h = VIDEO_WIDTH, VIDEO_HEIGHT
     c1, c2 = _hex(color1), _hex(color2)
     img = Image.new("RGB", (w, h))
@@ -59,14 +61,6 @@ def gradient_frame(color1: str, color2: str, text: str, idx: int, total: int) ->
     for i in range(60):
         alpha = int(1.2 * (60 - i))
         draw.rectangle([i, i, w - i, h - i], outline=(0, 0, 0, alpha))
-    # caption (wrapped)
-    f = _font(48)
-    lines = _wrap(text, 22)
-    y = h // 2 - (len(lines) * 60) // 2
-    for line in lines:
-        draw.text((w // 2, y), line, font=f, fill=(255, 255, 255, 235),
-                  anchor="mm")
-        y += 60
     # progress pill
     draw.text((w - 140, 60), f"{idx}/{total}", font=_font(40),
               fill=(255, 255, 255, 200), anchor="mm")
