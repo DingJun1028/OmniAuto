@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets / runtime
+.env
+storage/
+jobs.db
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

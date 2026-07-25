@@ -1,0 +1,13 @@
+# container build context exclusions
+.git
+.gitignore
+.venv
+storage
+*.db
+.env
+*.log
+__pycache__
+*.pyc
+examples
+README.md
+IDEA.md

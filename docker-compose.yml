@@ -1,0 +1,25 @@
+services:
+  aistation:
+    build: .
+    image: aistation:latest
+    container_name: aistation
+    ports:
+      - "8000:8000"
+    environment:
+      # All optional. Leave blank to run fully on free local tooling
+      # (edge-tts + ffmpeg + Pillow). Set on the host (or in a .env file)
+      # to enable the corresponding cloud module.
+      HOST: "0.0.0.0"
+      PORT: "8000"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ELEVENLABS_API_KEY: "${ELEVENLABS_API_KEY:-}"
+      RUNWAY_API_KEY: "${RUNWAY_API_KEY:-}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+      AWS_S3_BUCKET: "${AWS_S3_BUCKET:-}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      NCBDB_BASE_URL: "${NCBDB_BASE_URL:-}"
+      NCBDB_TOKEN: "${NCBDB_TOKEN:-}"
+    volumes:
+      - ./storage:/app/storage
+    restart: unless-stopped
