@@ -12,18 +12,18 @@
 - 🔲 **編號/序列**：`run_final` 目前把 shot_1..N 線性 concat，未來若要按 `shot.index` 顯式排序（防萬一 parser 回傳非遞增）。
 
 ## 2. 安全 / Security
-- 🔲 **n8n Webhook 無認證**：任何人可 POST `/webhook/n8n` 觸發生成（算力耗盡風險）。建議加 shared token 校驗（`X-AI-Station-Key` header 或 query secret）。
-- 🔲 **`/storage` 靜態掛載暴露所有影片**：建議加 path-traversal 防護或改走 signed URL。
-- 🔲 **`.env` 不進版控**：已 gitignore ✅；但 `.env.example` 應標註「勿填真值」。
+- ✅ **n8n Webhook 無認證**：已加 `WEBHOOK_SECRET` 校驗（`X-AI-Station-Key` header / `?key=` query）；未設則維持開放（見 app._check_webhook_auth）。
+- ✅ **`/storage` 路徑穿越**：已改用自寫 `GET /storage/{path}`，resolve 後確認在 STORAGE_DIR 內，否則 404/403。
+- 🔲 **`.env` 不進版控**：已 gitignore ✅；`.env.example` 已建立並標註「勿填真值」。
 
 ## 3. 可維護性 / Maintainability
 - ✅ **`git status` 乾淨 / 無暫存腳本殘留**（歷次 ad-hoc 驗證已清）。
 - 🔲 **`run.py` 與 `src/app.main` 雙入口**：建議統一至一處或加 `pyproject` 的 `[project.scripts]`。
-- 🔲 **magic string 重複**：`_CAP_FONT` Windows 路徑在 visuals/render 各寫一次；建議收斂到 `config.FONT_PATH`。
+- ✅ **magic string 重複**：`_CAP_FONT` / visuals 字體路徑已收斂到 `config.FONT_PATH`（單一跨平台解析）。
 
 ## 4. 效能 / Performance
-- 🔲 **`gradient_frame` 雙層 for-loop 像素賦值**（720p ~92 萬次迭代）：可用 `Image.linear_gradient` 或 numpy 向量化；免費模式每次生成都重畫。
-- 🔲 **同步阻塞**：`pipeline.enqueue` 在 request 線程跑完整 ffmpeg（數十秒）。建議改 background task + `/api/jobs` 輪詢（Webhook 已同步回傳，但長腳本會 timeout）。
+- ✅ **`gradient_frame` 雙層 for-loop 像素賦值**：改用 numpy 對角 blend（720p 毫秒級）。
+- ✅ **同步阻塞**：`POST /api/jobs` 改為立即回傳 `queued` + job_id，渲染走背景 `ThreadPoolExecutor`；`/api/jobs/{id}` 輪詢。Webhook 維持同步（n8n 等待結果）。
 
 ## 5. 可擴充性 / Extensibility
 - 🔒 **Docker Hub 自動推映像**：CI 已接好，待你貼 `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`（repo Secrets）。
@@ -36,9 +36,9 @@
 - 🔲 **失敗 video_url 為 None 時前端處理**：`/api/jobs/{id}/video` 在 `status!=done` 回 404，OK；但 n8n 回傳 `video_url=None` 需呼叫方判斷。
 
 ## 7. 測試 / Testing
-- ✅ **pytest 16 測試涵蓋 config/parser/tts/renderer/db/api/ci**（CI 綠燈）。
-- 🔲 **E2E ffmpeg 渲染未進 suite**：目前靠 CI 建置 + ad-hoc 腳本；建議加一個 `pytest --integration` 標記跑真 ffmpeg（CI 已裝 ffmpeg）。
+- ✅ **pytest 24 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration**（CI 綠燈）。
+- ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
 - 🔲 **`build_srt` 單元測試已加** ✅；`generate_broll` 建議加 mock httpx 測。
 
 ---
-下一步建議優先序：② 安全（webhook 認證）→ ④ 效能（gradient 向量化 + 背景任務）→ ⑦ E2E 測試標記。
+下一步建議優先序：⑥ 可觀測性（結構化日誌）→ ⑤ Runway/OpenAI 實測與 mock 測 → ③ 雙入口統一。

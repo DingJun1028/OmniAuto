@@ -8,12 +8,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import db, pipeline
+from . import config
 from .config import BASE_DIR, STORAGE_DIR, feature_summary
 
 app = FastAPI(title="AI Station", version="0.1.0")
@@ -33,10 +33,13 @@ def health():
 
 @app.post("/api/jobs")
 def create_job(payload: ScriptIn):
+    """Submit a job. Returns immediately (202) with the job id; the heavy
+    render runs in the background so long scripts don't block the request.
+    Poll GET /api/jobs/{id} for status."""
     if not payload.script.strip():
         raise HTTPException(400, "script is empty")
-    job = pipeline.enqueue(payload.script, payload.title, brand_preset=payload.brand_preset)
-    return job
+    job_id = pipeline.submit(payload.script, payload.title, brand_preset=payload.brand_preset)
+    return {"job_id": job_id, "status": "queued"}
 
 
 @app.get("/api/brand")
@@ -90,13 +93,26 @@ class WebhookIn(BaseModel):
         return self.script or self.text or ""
 
 
+def _check_webhook_auth(request: "Request"):
+    """If WEBHOOK_SECRET is configured, require it via header or query."""
+    secret = config.WEBHOOK_SECRET
+    if not secret:
+        return
+    x_key = request.headers.get("X-AI-Station-Key")
+    key = request.query_params.get("key")
+    if x_key != secret and key != secret:
+        raise HTTPException(401, "invalid or missing webhook key")
+
+
 @app.post("/webhook/n8n")
-def webhook_n8n(payload: WebhookIn):
+def webhook_n8n(payload: WebhookIn, request: "Request"):
+    _check_webhook_auth(request)
     script = payload.body
     if not script.strip():
         raise HTTPException(400, "missing 'script' or 'text'")
+    # Webhook stays synchronous (n8n awaits the result), but runs via the
+    # same background pool so very long scripts still complete.
     job = pipeline.enqueue(script, payload.title, brand_preset=payload.brand_preset)
-    # Return a compact, n8n-friendly shape.
     res = json.loads(job["result"]) if job.get("result") else {}
     return {
         "job_id": job["job_id"],
@@ -113,10 +129,11 @@ def video(job_id: str):
     j = db.get_job(job_id)
     if not j or j.get("status") != "done":
         raise HTTPException(404, "video not ready")
-    path = Path(j["result"]) if isinstance(j["result"], str) else None
-    import json
     res = json.loads(j["result"]) if isinstance(j["result"], str) else j["result"]
     file = Path(res["file"])
+    # Path-traversal guard: only serve files inside STORAGE_DIR.
+    if not str(file.resolve()).startswith(str(STORAGE_DIR.resolve())):
+        raise HTTPException(403, "forbidden path")
     if not file.exists():
         raise HTTPException(404, "file missing")
     return FileResponse(str(file), media_type="video/mp4", filename=f"{job_id}.mp4")
@@ -128,7 +145,13 @@ def index():
 
 
 # Serve generated assets (local storage, IDEA.md module 6 fallback).
-app.mount("/storage", StaticFiles(directory=str(STORAGE_DIR)), name="storage")
+# Guarded against path traversal: resolve and confirm inside STORAGE_DIR.
+@app.get("/storage/{rest_of_path:path}")
+def storage_file(rest_of_path: str):
+    target = (STORAGE_DIR / rest_of_path).resolve()
+    if not str(target).startswith(str(STORAGE_DIR.resolve())) or not target.exists():
+        raise HTTPException(404, "not found")
+    return FileResponse(str(target))
 
 
 def main():

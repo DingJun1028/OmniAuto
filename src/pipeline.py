@@ -9,12 +9,17 @@ from __future__ import annotations
 
 import json
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import db
 from . import renderer, storage, tts, visuals
 from .config import STORAGE_DIR
 from .parser import parse_script, Shot
+
+
+# Background worker pool so job submission never blocks the HTTP request.
+_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="aistation")
 
 
 def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None = None) -> str:
@@ -69,6 +74,7 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
 
 
 def enqueue(script: str, title: str, brand_preset: str | None = None) -> dict:
+    """Run synchronously (webhook path) and return the finished job record."""
     job_id = uuid.uuid4().hex[:12]
     db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset})
     try:
@@ -76,6 +82,16 @@ def enqueue(script: str, title: str, brand_preset: str | None = None) -> dict:
     except Exception as e:  # keep the job record even on failure
         db.update_job(job_id, status="failed", result=__json({"error": str(e)}))
     return db.get_job(job_id)  # type: ignore[return-value]
+
+
+def submit(script: str, title: str, brand_preset: str | None = None) -> str:
+    """Create the job and run the render in the background pool; return job_id
+    immediately. The caller polls GET /api/jobs/{id} for status."""
+    job_id = uuid.uuid4().hex[:12]
+    db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset,
+                                  "status": "queued", "progress": 0})
+    _pool.submit(run_pipeline, job_id, script, title, brand_preset)
+    return job_id
 
 
 def __json(obj) -> str:

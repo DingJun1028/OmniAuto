@@ -12,23 +12,21 @@ from __future__ import annotations
 import httpx
 from PIL import Image, ImageDraw, ImageFont
 
-from .config import RUNWAY_API_KEY, USE_RUNWAY, VIDEO_WIDTH, VIDEO_HEIGHT
+from .config import (
+    FONT_PATH,
+    RUNWAY_API_KEY,
+    USE_RUNWAY,
+    VIDEO_HEIGHT,
+    VIDEO_WIDTH,
+)
 
 
 def _font(size: int):
-    for cand in [
-        "C:/Windows/Fonts/msyh.ttc",   # Microsoft YaHei (zh)
-        "C:/Windows/Fonts/arial.ttf",
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/System/Library/Fonts/Supplemental/Arial.ttf",
-        "/System/Library/Fonts/Supplemental/NotoSansCJK-Regular.ttc",
-    ]:
-        try:
-            return ImageFont.truetype(cand, size)
-        except Exception:
-            continue
-    return ImageFont.load_default()
+    # Converged to the single CJK-capable font resolved in config.FONT_PATH.
+    try:
+        return ImageFont.truetype(FONT_PATH, size)
+    except Exception:
+        return ImageFont.load_default()
 
 
 def _lerp(a: int, b: int, t: float) -> int:
@@ -42,18 +40,19 @@ def _hex(c: str) -> tuple:
 
 def gradient_frame(color1: str, color2: str, idx: int, total: int) -> Image.Image:
     """Render one 16:9 gradient background + progress pill (no caption text —
-    synced subtitles are burned by the renderer, IDEA.md 5)."""
+    synced subtitles are burned by the renderer, IDEA.md 5).
+
+    The gradient is computed as a numpy diag blend (no per-pixel Python loop),
+    so even 720p frames build in a few milliseconds.
+    """
+    import numpy as np
+
     w, h = VIDEO_WIDTH, VIDEO_HEIGHT
-    c1, c2 = _hex(color1), _hex(color2)
-    img = Image.new("RGB", (w, h))
-    px = img.load()
-    for y in range(h):
-        for x in range(w):
-            t = (x / w + y / h) / 2
-            r = _lerp(c1[0], c2[0], t)
-            g = _lerp(c1[1], c2[1], t)
-            b = _lerp(c1[2], c2[2], t)
-            px[x, y] = (r, g, b)
+    c1, c2 = (np.array(_hex(color1), dtype=float), np.array(_hex(color2), dtype=float))
+    yy, xx = np.mgrid[0:h, 0:w].astype(float)
+    t = (xx / w + yy / h) / 2.0  # diagonal blend factor
+    buf = c1[None, None, :] * (1 - t[..., None]) + c2[None, None, :] * t[..., None]
+    img = Image.fromarray(buf.astype("uint8"), "RGB")
     draw = ImageDraw.Draw(img, "RGBA")
     for i in range(60):
         alpha = int(1.2 * (60 - i))

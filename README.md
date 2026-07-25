@@ -48,10 +48,20 @@ curl -X POST http://localhost:8000/webhook/n8n \
   -H 'Content-Type: application/json' \
   -d '{"title":"每日快報","script":"今天的新聞。我們用 AI Station 自動生成這支影片。"}'
 
-# 查詢作業
+# 若部署時設定了 WEBHOOK_SECRET，必須帶金鑰（header 或 query 二擇一）
+curl -X POST http://localhost:8000/webhook/n8n \
+  -H 'Content-Type: application/json' \
+  -H 'X-AI-Station-Key: <your-secret>' \
+  -d '{"title":"每日快報","script":"..."}'
+
+# 查詢作業（API 提交後立即回傳 queued，再輪詢狀態）
 curl http://localhost:8000/api/jobs
 curl http://localhost:8000/api/jobs/<job_id>
 ```
+
+> 安全提示：`/webhook/n8n` 預設開放。若對外暴露，請設定環境變數
+> `WEBHOOK_SECRET`，呼叫方須攜帶 `X-AI-Station-Key` 或 `?key=`，否則回 401。
+> `/storage/*` 已加路徑穿越防護，只服務 STORAGE_DIR 內檔案。
 
 ### n8n 排程 / 自動化
 

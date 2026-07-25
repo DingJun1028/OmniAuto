@@ -52,6 +52,30 @@ USE_NCBDB = bool(NCBDB_BASE_URL and NCBDB_TOKEN)
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "8000"))
 
+# ---- Webhook security ----
+# Optional shared secret for the n8n / generic webhook. When set, inbound
+# webhook calls must carry it via the `X-AI-Station-Key` header or `?key=`.
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")
+
+# ---- Shared font path (CJK-capable, Windows/Linux/macOS) ----
+# Single source of truth for caption + slate fonts (used by renderer + visuals).
+def _resolve_font() -> str:
+    candidates = [
+        os.getenv("FONT_PATH", ""),
+        "C:/Windows/Fonts/msyh.ttc",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/System/Library/Fonts/Supplemental/NotoSansCJK-Regular.ttc",
+        "/System/Library/Fonts/Supplemental/Arial.ttf",
+    ]
+    for c in candidates:
+        if c and Path(c).exists():
+            return c
+    return candidates[-1]  # last resort (may not exist) — callers fall back
+
+
+FONT_PATH = _resolve_font()
+
 
 def feature_summary() -> dict:
     """Human-readable map of which modules are live vs. using free fallback."""

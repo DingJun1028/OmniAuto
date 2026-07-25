@@ -6,14 +6,16 @@ Milestone regression tests for the features delivered across sessions:
 - tts: build_srt (word-synced) helper
 - renderer: caption filter (word-synced drawtext) + audio-duration fallback
 - db: job lifecycle (create/update/get/list) against a temp SQLite
-- FastAPI: n8n webhook + job endpoints (TestClient, no network)
+- FastAPI: n8n webhook (auth) + job endpoints (TestClient)
 - CI workflow + n8n workflow JSON structural checks
+- security: webhook secret, storage path-traversal guard
+- integration: real ffmpeg render of a 壽司博士 DNA script
 
-These are UNIT/INTEGRATION tests that do NOT require network, ffmpeg, or
-cloud keys. (End-to-end ffmpeg rendering is exercised separately via CI /
-ad-hoc scripts, since it needs a working ffmpeg binary.)
+Unit tests need no network/ffmpeg/cloud keys. The integration render test
+skips itself when ffmpeg is absent (but CI installs ffmpeg, so it runs there).
 """
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -248,4 +250,75 @@ def test_api_series_endpoint():
     script = "【場景】測試場景。\n【反思】測試反思。\n"
     rj = c.post("/api/jobs", json={"script": script, "brand_preset": "sushi_dr"})
     assert rj.status_code == 200
-    assert rj.json()["status"] in ("done", "failed")
+    # API now returns immediately (queued); poll until the job resolves.
+    import time
+
+    job_id = rj.json()["job_id"]
+    assert rj.json()["status"] == "queued"
+    j = None
+    for _ in range(60):
+        j = c.get(f"/api/jobs/{job_id}").json()
+        if j["status"] in ("done", "failed"):
+            break
+        time.sleep(0.5)
+    assert j["status"] == "done"
+
+
+# ---- Security + background-job + integration (real ffmpeg) ----
+
+def test_webhook_requires_secret_when_configured(monkeypatch):
+    from src import app, config
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("WEBHOOK_SECRET", "s3cr3t")
+    monkeypatch.setattr(config, "WEBHOOK_SECRET", "s3cr3t")
+    c = TestClient(app.app)
+    # no key -> 401
+    r = c.post("/webhook/n8n", json={"script": "x"})
+    assert r.status_code == 401
+    # wrong key -> 401
+    r = c.post("/webhook/n8n", json={"script": "x"}, headers={"X-AI-Station-Key": "nope"})
+    assert r.status_code == 401
+    # correct key -> accepted (renders)
+    r = c.post("/webhook/n8n", json={"script": "x"}, headers={"X-AI-Station-Key": "s3cr3t"})
+    assert r.status_code == 200
+    assert r.json()["status"] in ("done", "failed")
+
+
+def test_storage_path_traversal_blocked():
+    from src import app
+    from fastapi.testclient import TestClient
+
+    c = TestClient(app.app)
+    # try to escape STORAGE_DIR via ../../
+    r = c.get("/storage/../../etc/passwd")
+    assert r.status_code in (403, 404)
+
+
+def test_integration_render_runs_ffmpeg():
+    """End-to-end: a real DNA script should render an MP4 via ffmpeg.
+
+    Marked integration because it shells out to ffmpeg (installed in CI).
+    """
+    import pytest
+
+    try:
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+    except Exception:
+        pytest.skip("ffmpeg not installed")
+    from src import pipeline
+
+    script = (
+        "【場景】一家公司花了一年寫完永續報告。\n"
+        "【衝突】報告完成了，公司卻沒有改變。\n"
+        "【洞察】ESG 被當成交付物而不是經營系統。\n"
+        "【方法】用 1.0、1.5、2.0 檢查位置。\n"
+        "【反思】如果永續沒減少任何人的苦，算永續嗎？\n"
+    )
+    job = pipeline.enqueue(script, "integration-test", brand_preset="sushi_dr")
+    assert job["status"] == "done"
+    import json
+    from pathlib import Path
+
+    file = Path(json.loads(job["result"])["file"])
+    assert file.exists() and file.stat().st_size > 1000

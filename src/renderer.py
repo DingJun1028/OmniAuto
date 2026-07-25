@@ -17,19 +17,11 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH
+from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH, FONT_PATH
 
-_CAP_FONT = "C\\:/Windows/Fonts/msyh.ttc"
-# Linux fallback (Debian/Ubuntu + fonts-noto-cjk): Microsoft YaHei won't
-# exist there, so the renderer prefers Noto CJK when present.
-if not Path(_CAP_FONT).exists():
-    for _cand in (
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    ):
-        if Path(_cand).exists():
-            _CAP_FONT = _cand.replace("\\", "/").replace(":", "\\:")
-            break
+# Caption font for ffmpeg drawtext — reuse the single resolved CJK font.
+# drawtext needs a POSIX-style path with ':' escaped (ffmpeg filter syntax).
+_CAP_FONT = str(FONT_PATH).replace("\\", "/").replace(":", "\\:")
 _CAP_OPTS = (
     "fontcolor=white:fontsize=44:box=1:boxcolor=black@0.55:boxborderw=14:"
     "line_spacing=8:alpha=0.95"
