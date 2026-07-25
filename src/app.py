@@ -14,10 +14,11 @@ from pydantic import BaseModel
 
 from . import db, pipeline
 from . import config
-from .config import BASE_DIR, STORAGE_DIR, feature_summary
+from .config import BASE_DIR, STORAGE_DIR, feature_summary, setup_logging, log
 
 app = FastAPI(title="AI Station", version="0.1.0")
 db.init_db()
+setup_logging()  # TODO pillar 6: structured logging (no-op if already configured)
 
 
 class ScriptIn(BaseModel):

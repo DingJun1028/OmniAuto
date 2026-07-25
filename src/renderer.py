@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH, FONT_PATH
+from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH, FONT_PATH, log
 
 # Caption font for ffmpeg drawtext — reuse the single resolved CJK font.
 # drawtext needs a POSIX-style path with ':' escaped (ffmpeg filter syntax).
@@ -51,8 +51,9 @@ def audio_duration(path: Path) -> float:
             capture_output=True, text=True, check=True,
         ).stdout
         return max(1.0, float(json.loads(out)["format"]["duration"]))
-    except Exception:
+    except Exception as e:
         # ffprobe missing or failed -> safe fallback duration.
+        log.warning("audio_duration: ffprobe failed (%s); using 4.0s fallback", e)
         return 4.0
 
 

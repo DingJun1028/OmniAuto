@@ -28,10 +28,19 @@ pip install -r requirements.txt
 # 2. (選用) 複製 .env.example 為 .env 並填入雲端 key
 cp .env.example .env
 
-# 3. 啟動 AI Station
-python run.py
-# 或： uvicorn src.app:app --reload --port 8000
+# 3. 啟動 AI Station（下列任一方式皆可，皆指向同一入口 src.app:app）
+pip install -e .                      # 註冊 console script
+ai-station                             # 方式 A：console script
+python -m src.app                      # 方式 B：模組執行
+python run.py                          # 方式 C：相容舊啟動檔
+uvicorn src.app:app --host 0.0.0.0 --port 8000   # 方式 D：ASGI（生產/容器）
+
+# 日誌層級（選用）
+AI_STATION_LOG_LEVEL=DEBUG ai-station
 ```
+
+> 日誌：pipeline / TTS / renderer / visuals 關鍵階段皆輸出結構化 log
+> （含失敗 traceback），便於在 VPS / Docker 排錯。
 
 打開 http://localhost:8000 ，貼上腳本，點「一鍵生成影片」即可。
 

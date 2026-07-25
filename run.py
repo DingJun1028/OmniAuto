@@ -1,4 +1,11 @@
-"""Entry point: start the AI Station control center."""
+"""Entry point helpers for AI Station.
+
+Canonical ways to start the control center (all reach src.app:app / main):
+  - `ai-station`            (console script from `pip install -e .`)
+  - `python -m src.app`     (module execution)
+  - `uvicorn src.app:app`   (ASGI server, used by the Dockerfile)
+  - `python run.py`         (this thin wrapper, kept for convenience)
+"""
 import sys
 from pathlib import Path
 

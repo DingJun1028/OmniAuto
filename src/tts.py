@@ -17,7 +17,12 @@ import asyncio
 import subprocess
 from pathlib import Path
 
-from .config import ELEVENLABS_API_KEY, ELEVENLABS_VOICE_ID, USE_ELEVENLABS
+from .config import (
+    ELEVENLABS_API_KEY,
+    ELEVENLABS_VOICE_ID,
+    USE_ELEVENLABS,
+    log,
+)
 
 # A pleasant multilingual voice that works across EN / ZH / JA on edge-tts.
 EDGE_VOICE = "zh-TW-HsiaoChenNeural"  # swap to en-US-AriaNeural etc. if preferred
@@ -85,11 +90,14 @@ def synthesize(text: str, out_path: Path):
     """
     try:
         if USE_ELEVENLABS:
+            log.info("tts: using elevenlabs")
             path, bounds = _tts_elevenlabs(text, out_path)
         else:
+            log.info("tts: using edge-tts (free)")
             path, bounds = _tts_edge(text, out_path)
         return path, bounds, False
-    except Exception:
+    except Exception as e:
+        log.warning("tts: engine failed (%s); falling back to silent track", e)
         _silent_audio(text, out_path)
         return out_path, [], True
 

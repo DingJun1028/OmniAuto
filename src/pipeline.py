@@ -14,7 +14,7 @@ from pathlib import Path
 
 from . import db
 from . import renderer, storage, tts, visuals
-from .config import STORAGE_DIR
+from .config import STORAGE_DIR, log
 from .parser import parse_script, Shot
 
 
@@ -25,11 +25,13 @@ _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="aistation")
 def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None = None) -> str:
     work = STORAGE_DIR / job_id
     work.mkdir(parents=True, exist_ok=True)
+    log.info("job=%s start title=%r brand=%s", job_id, title, brand_preset)
 
     db.update_job(job_id, status="parsing", progress=5)
     shots = parse_script(script)
     shot_dicts = [s.to_dict() if isinstance(s, Shot) else s for s in shots]
     db.update_job(job_id, status="tts", progress=20, payload=__json(shot_dicts))
+    log.info("job=%s parsed shots=%d", job_id, len(shots))
 
     # 3 + 4: per-shot audio (+ word timings) + media (gradient still or Runway B-roll)
     medias, is_videos, audios, all_boundaries = [], [], [], []
@@ -70,6 +72,7 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
         progress=100,
         result=__json({"video_url": url, "file": str(video), "shots": len(shots)}),
     )
+    log.info("job=%s done video=%s", job_id, video)
     return url
 
 
@@ -80,6 +83,7 @@ def enqueue(script: str, title: str, brand_preset: str | None = None) -> dict:
     try:
         run_pipeline(job_id, script, title, brand_preset=brand_preset)
     except Exception as e:  # keep the job record even on failure
+        log.exception("job=%s failed", job_id)
         db.update_job(job_id, status="failed", result=__json({"error": str(e)}))
     return db.get_job(job_id)  # type: ignore[return-value]
 
@@ -90,6 +94,7 @@ def submit(script: str, title: str, brand_preset: str | None = None) -> str:
     job_id = uuid.uuid4().hex[:12]
     db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset,
                                   "status": "queued", "progress": 0})
+    log.info("job=%s submitted (background)", job_id)
     _pool.submit(run_pipeline, job_id, script, title, brand_preset)
     return job_id
 

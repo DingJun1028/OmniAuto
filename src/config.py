@@ -7,11 +7,40 @@ runs end-to-end on free local tooling by default.
 from __future__ import annotations
 
 import os
+import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# ---- Structured logging (TODO pillar 6: observability) ----
+# A single module-level logger used across the pipeline. Configured once
+# via setup_logging(); safe to call repeatedly.
+log = logging.getLogger("ai_station")
+
+
+def setup_logging(level: int | None = None) -> logging.Logger:
+    """Configure the ai_station logger with a structured-ish formatter.
+
+    Level: explicit arg > AI_STATION_LOG_LEVEL env > INFO.
+    Idempotent — subsequent calls only adjust the level.
+    """
+    lvl = level if level is not None else getattr(
+        logging, os.getenv("AI_STATION_LOG_LEVEL", "INFO").upper(), logging.INFO
+    )
+    if not log.handlers:
+        handler = logging.StreamHandler()
+        handler.setFormatter(
+            logging.Formatter(
+                "%(asctime)s %(levelname)s [%(name)s] %(message)s",
+                datefmt="%Y-%m-%dT%H:%M:%S",
+            )
+        )
+        log.addHandler(handler)
+    log.setLevel(lvl)
+    return log
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STORAGE_DIR = BASE_DIR / "storage"

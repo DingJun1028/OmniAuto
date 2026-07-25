@@ -18,7 +18,7 @@
 
 ## 3. 可維護性 / Maintainability
 - ✅ **`git status` 乾淨 / 無暫存腳本殘留**（歷次 ad-hoc 驗證已清）。
-- 🔲 **`run.py` 與 `src/app.main` 雙入口**：建議統一至一處或加 `pyproject` 的 `[project.scripts]`。
+- ✅ **`run.py` 與 `src/app.main` 雙入口**：已統一至 `src.app:app`/`main`；pyproject 加 `[project.scripts] ai-station`；`python -m src.app`、`uvicorn src.app:app`、`python run.py` 皆通。
 - ✅ **magic string 重複**：`_CAP_FONT` / visuals 字體路徑已收斂到 `config.FONT_PATH`（單一跨平台解析）。
 
 ## 4. 效能 / Performance
@@ -27,18 +27,18 @@
 
 ## 5. 可擴充性 / Extensibility
 - 🔒 **Docker Hub 自動推映像**：CI 已接好，待你貼 `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`（repo Secrets）。
-- 🔲 **Runway API 實測**：目前 best-effort，無 key 無法驗證；建議在 README 註明「需你實測調整 endpoint」。
-- 🔲 **OpenAI parser 路徑未測**：`parse_openai` 無單元測（需 key）；建議加 mock 測試。
+- ✅ **Runway API 實測**：`generate_broll` 保持 best-effort；新增 `test_runway_fallback_mock` 驗證無 key/失敗時回落漸層（不需真 key）。
+- ✅ **OpenAI parser 路徑未測**：新增 `test_parse_openai_mock`（monkeypatch httpx，驗證 Shot 形狀，不需 key）。
 
 ## 6. 可觀測性 / Observability
 - ✅ **`/api/health` 回傳 feature 旗標**：已含。
-- 🔲 **結構化日誌**：目前無 logging，僅 DB 狀態；建議加 `logging` 到 pipeline 各階段。
+- ✅ **結構化日誌**：新增 `config.setup_logging()` + 模組級 `log`，pipeline/tts/renderer/visuals/app 關鍵階段均打 log（含失敗 traceback）。層級可經 `AI_STATION_LOG_LEVEL` 調整。
 - 🔲 **失敗 video_url 為 None 時前端處理**：`/api/jobs/{id}/video` 在 `status!=done` 回 404，OK；但 n8n 回傳 `video_url=None` 需呼叫方判斷。
 
 ## 7. 測試 / Testing
-- ✅ **pytest 24 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration**（CI 綠燈）。
+- ✅ **pytest 26 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai**（CI 綠燈）。
 - ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
-- 🔲 **`build_srt` 單元測試已加** ✅；`generate_broll` 建議加 mock httpx 測。
+- ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback 單元測試已加**。
 
 ---
-下一步建議優先序：⑥ 可觀測性（結構化日誌）→ ⑤ Runway/OpenAI 實測與 mock 測 → ③ 雙入口統一。
+下一步建議優先序：⑥ 剩餘項（可視化 dash 或指標）→ ⑤ Docker Hub/真 Runway 實測（需密鑰）→ ② 後續強化。

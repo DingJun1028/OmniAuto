@@ -26,6 +26,9 @@ dev = [
 [tool.setuptools]
 packages = ["src"]
 
+[project.scripts]
+ai-station = "src.app:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

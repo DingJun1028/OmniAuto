@@ -18,6 +18,7 @@ from .config import (
     USE_RUNWAY,
     VIDEO_HEIGHT,
     VIDEO_WIDTH,
+    log,
 )
 
 
@@ -124,8 +125,9 @@ def render_shot_media(shot: dict, idx: int, total: int, png_path, mp4_path) -> t
     """Return (media_path, is_video). Uses Runway B-roll when enabled, else gradient."""
     if USE_RUNWAY:
         try:
+            log.info("visuals: generating Runway B-roll for shot %d", idx)
             return generate_broll(shot, mp4_path), True
-        except Exception:
-            pass
+        except Exception as e:
+            log.warning("visuals: Runway failed (%s); falling back to gradient", e)
     render_free_frame(shot, idx, total, png_path)
     return png_path, False

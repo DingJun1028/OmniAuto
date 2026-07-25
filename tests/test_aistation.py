@@ -295,6 +295,70 @@ def test_storage_path_traversal_blocked():
     assert r.status_code in (403, 404)
 
 
+def test_parse_openai_mock(monkeypatch):
+    """parse_openai shapes Shot objects from a mocked OpenAI chat response
+    without any real API key / network call."""
+    import json
+    from src import parser
+
+    class _Resp:
+        def __init__(self, payload):
+            self._p = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._p
+
+    fake = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "shots": [
+                                {"narration": "a", "visual_prompt": "p1", "caption": "c1"},
+                                {"narration": "b", "visual_prompt": "p2", "caption": "c2"},
+                            ]
+                        }
+                    )
+                }
+            }
+        ]
+    }
+
+    class _Post:
+        def __call__(self, *a, **k):
+            return _Resp(fake)
+
+    monkeypatch.setattr(parser.httpx, "post", _Post())
+    shots = parser.parse_openai("any script")
+    assert len(shots) == 2
+    assert all(isinstance(s, parser.Shot) for s in shots)
+    assert shots[0].narration == "a" and shots[1].visual_prompt == "p2"
+
+
+def test_runway_fallback_mock(monkeypatch):
+    """When RUNWAY_API_KEY is set but the call fails, visuals falls back to
+    a gradient still (is_video=False) instead of raising."""
+    from src import config, visuals
+    import httpx as _httpx
+    from pathlib import Path
+    import tempfile
+
+    monkeypatch.setattr(config, "USE_RUNWAY", True)
+    monkeypatch.setattr(config, "RUNWAY_API_KEY", "fake-key")
+    # Force the Runway call to blow up so we exercise the fallback path.
+    monkeypatch.setattr(_httpx, "post",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("down")))
+    shot = {"theme": ["#10131a", "#2a3a5c", "neutral"], "visual_prompt": "x"}
+    d = Path(tempfile.mkdtemp())
+    media, is_video = visuals.render_shot_media(shot, 1, 1, d / "s.png", d / "s.mp4")
+    assert is_video is False
+    assert str(media).endswith(".png")
+
+
 def test_integration_render_runs_ffmpeg():
     """End-to-end: a real DNA script should render an MP4 via ffmpeg.
 
