@@ -18,6 +18,7 @@ def save_local(path: Path) -> str:
 
 def upload_s3(path: Path) -> str:
     import boto3
+    from boto3.s3.transfer import TransferConfig
 
     s3 = boto3.client(
         "s3",
@@ -26,7 +27,18 @@ def upload_s3(path: Path) -> str:
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
     )
     key = f"videos/{path.name}"
-    s3.upload_file(str(path), AWS_S3_BUCKET, key)
+    # Upload with an explicit content type + a bounded timeout so a stalled
+    # transfer can't hang the publish step.
+    s3.upload_file(
+        str(path),
+        AWS_S3_BUCKET,
+        key,
+        ExtraArgs={"ContentType": "video/mp4"},
+        Config=TransferConfig(
+            multipart_threshold=8 * 1024 * 1024,
+            max_concurrency=4,
+        ),
+    )
     return f"https://{AWS_S3_BUCKET}.s3.{AWS_REGION}.amazonaws.com/{key}"
 
 

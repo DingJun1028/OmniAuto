@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import hmac
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse
@@ -95,13 +96,17 @@ class WebhookIn(BaseModel):
 
 
 def _check_webhook_auth(request: "Request"):
-    """If WEBHOOK_SECRET is configured, require it via header or query."""
+    """If WEBHOOK_SECRET is configured, require it via header or query.
+
+    Uses constant-time comparison (hmac.compare_digest) to avoid a
+    timing side-channel on the secret.
+    """
     secret = config.WEBHOOK_SECRET
     if not secret:
         return
-    x_key = request.headers.get("X-AI-Station-Key")
-    key = request.query_params.get("key")
-    if x_key != secret and key != secret:
+    x_key = request.headers.get("X-AI-Station-Key") or ""
+    key = request.query_params.get("key") or ""
+    if not hmac.compare_digest(x_key, secret) and not hmac.compare_digest(key, secret):
         raise HTTPException(401, "invalid or missing webhook key")
 
 

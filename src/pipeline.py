@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import atexit
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -20,6 +21,12 @@ from .parser import parse_script, Shot
 
 # Background worker pool so job submission never blocks the HTTP request.
 _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="aistation")
+
+
+@atexit.register
+def _shutdown_pool():
+    """Release worker threads on process exit (clean reloads / test runs)."""
+    _pool.shutdown(wait=False, cancel_futures=True)
 
 
 def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None = None) -> str:
@@ -95,7 +102,17 @@ def submit(script: str, title: str, brand_preset: str | None = None) -> str:
     db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset,
                                   "status": "queued", "progress": 0})
     log.info("job=%s submitted (background)", job_id)
-    _pool.submit(run_pipeline, job_id, script, title, brand_preset)
+
+    def _run():
+        # Mirror enqueue()'s safety so a render error is recorded as `failed`
+        # instead of leaving the job stuck in `queued`/`rendering` forever.
+        try:
+            run_pipeline(job_id, script, title, brand_preset=brand_preset)
+        except Exception as e:
+            log.exception("job=%s failed (background)", job_id)
+            db.update_job(job_id, status="failed", result=__json({"error": str(e)}))
+
+    _pool.submit(_run)
     return job_id
 
 

@@ -22,6 +22,8 @@ dev = [
     "pytest",
     "pyyaml",
 ]
+# Optional cloud extras — only needed when the corresponding key is set.
+s3 = ["boto3"]
 
 [tool.setuptools]
 packages = ["src"]

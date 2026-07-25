@@ -26,6 +26,21 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
+@pytest.fixture
+def isolated_state(tmp_path, monkeypatch):
+    """Redirect job DB + storage into a temp dir so render tests never touch
+    the real repo state (jobs.db / storage/)."""
+    from src import config, db, pipeline
+
+    work = tmp_path / "state"
+    work.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr(config, "STORAGE_DIR", work)
+    monkeypatch.setattr(db, "DB_PATH", work / "jobs.db")
+    monkeypatch.setattr(pipeline, "STORAGE_DIR", work)
+    db.init_db()
+    return work
+
+
 # ---------------------------------------------------------------- config
 def test_config_free_mode_is_default():
     from src import config
@@ -235,7 +250,7 @@ def test_parser_uses_dna_markers():
     assert shots[-1].theme[2] == "reflection"
 
 
-def test_api_series_endpoint():
+def test_api_series_endpoint(isolated_state):
     from src import app
     from fastapi.testclient import TestClient
 
@@ -266,7 +281,7 @@ def test_api_series_endpoint():
 
 # ---- Security + background-job + integration (real ffmpeg) ----
 
-def test_webhook_requires_secret_when_configured(monkeypatch):
+def test_webhook_requires_secret_when_configured(monkeypatch, isolated_state):
     from src import app, config
     from fastapi.testclient import TestClient
 
@@ -293,6 +308,31 @@ def test_storage_path_traversal_blocked():
     # try to escape STORAGE_DIR via ../../
     r = c.get("/storage/../../etc/passwd")
     assert r.status_code in (403, 404)
+
+
+def test_submit_marks_failed_on_render_error(isolated_state, monkeypatch):
+    """Regression: a background job whose render raises must end as `failed`,
+    never stuck in `queued`/`rendering` (the bug fixed in submit())."""
+    import time
+    from src import app, pipeline
+    from fastapi.testclient import TestClient
+
+    def _boom(*a, **k):
+        raise RuntimeError("forced render failure")
+
+    monkeypatch.setattr(pipeline, "run_pipeline", _boom)
+    c = TestClient(app.app)
+    rj = c.post("/api/jobs", json={"title": "t", "script": "【場景】x。"})
+    assert rj.status_code == 200
+    job_id = rj.json()["job_id"]
+    j = None
+    for _ in range(40):
+        j = c.get(f"/api/jobs/{job_id}").json()
+        if j["status"] in ("done", "failed"):
+            break
+        time.sleep(0.2)
+    assert j["status"] == "failed"
+    assert "forced render failure" in (j.get("result") or "")
 
 
 def test_parse_openai_mock(monkeypatch):
@@ -359,7 +399,7 @@ def test_runway_fallback_mock(monkeypatch):
     assert str(media).endswith(".png")
 
 
-def test_integration_render_runs_ffmpeg():
+def test_integration_render_runs_ffmpeg(isolated_state):
     """End-to-end: a real DNA script should render an MP4 via ffmpeg.
 
     Marked integration because it shells out to ffmpeg (installed in CI).
