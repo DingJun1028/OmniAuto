@@ -11,6 +11,7 @@ dependencies = [
     "fastapi",
     "uvicorn",
     "pillow",
+    "numpy",
     "edge-tts",
     "httpx",
     "python-dotenv",
@@ -23,7 +24,7 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["src", "web"]
+packages = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
