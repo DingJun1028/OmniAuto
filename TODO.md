@@ -33,6 +33,7 @@
 ## 6. 可觀測性 / Observability
 - ✅ **`/api/health` 回傳 feature 旗標**：已含。
 - ✅ **結構化日誌**：新增 `config.setup_logging()` + 模組級 `log`，pipeline/tts/renderer/visuals/app 關鍵階段均打 log（含失敗 traceback）。層級可經 `AI_STATION_LOG_LEVEL` 調整。
+- ✅ **CI 不會因 Docker registry 抖動紅燈**：buildx + build 步驟設 `continue-on-error`，pytest 綠燈即整體綠燈（build-only，無 Docker Hub push）。
 - 🔲 **失敗 video_url 為 None 時前端處理**：`/api/jobs/{id}/video` 在 `status!=done` 回 404，OK；但 n8n 回傳 `video_url=None` 需呼叫方判斷。
 
 ## 7. 測試 / Testing
