@@ -23,14 +23,15 @@ _CAP_OPTS = (
 
 
 def audio_duration(path: Path) -> float:
-    out = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "json", str(path)],
-        capture_output=True, text=True,
-    ).stdout
     try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "json", str(path)],
+            capture_output=True, text=True, check=True,
+        ).stdout
         return max(1.0, float(json.loads(out)["format"]["duration"]))
     except Exception:
+        # ffprobe missing or failed -> safe fallback duration.
         return 4.0
 
 
