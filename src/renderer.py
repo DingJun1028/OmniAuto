@@ -1,12 +1,11 @@
 """Module 5 — Rendering engine (ffmpeg, "code-as-video").
 
-Assembles each shot's audio + background frame into a watchable clip:
-  - per-shot duration = audio duration (or 4s fallback)
-  - slow ken-burns zoom/pan on the still for motion
-  - captions burned as word-synced subtitles using ffmpeg drawtext
-    driven by edge-tts word-boundary timings (IDEA.md 5: 壓製字幕)
+Assembles each shot's audio + background media into a watchable clip:
+  - media may be a still PNG (free gradient) or an MP4 (Runway B-roll)
+  - stills get a slow ken-burns zoom/pan; videos are trimmed/faded
+  - captions burned as word-synced subtitles via ffmpeg drawtext
   - concat all shots into one MP4
-Runs fully headless via ffmpeg; no GPU required (IDEA.md architecture).
+Runs fully headless via ffmpeg; no GPU required.
 """
 from __future__ import annotations
 
@@ -16,8 +15,7 @@ from pathlib import Path
 
 from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH
 
-# Caption styling (bottom-center, high-contrast for YouTube).
-_CAP_FONT = "C\\:/Windows/Fonts/msyh.ttc"  # Microsoft YaHei (zh-capable)
+_CAP_FONT = "C\\:/Windows/Fonts/msyh.ttc"
 _CAP_OPTS = (
     "fontcolor=white:fontsize=44:box=1:boxcolor=black@0.55:boxborderw=14:"
     "line_spacing=8:alpha=0.95"
@@ -37,32 +35,21 @@ def audio_duration(path: Path) -> float:
 
 
 def _esc(text: str) -> str:
-    """Escape text for ffmpeg drawtext 'text' expansion."""
     return (text.replace("\\", "\\\\").replace("'", "\\'")
             .replace(":", "\\:").replace("%", "\\%").replace(",", "\\,"))
 
 
 def _caption_filter(boundaries: list[dict]) -> str:
-    """Build a drawtext filter that reveals words at their spoken time.
-
-    Each word becomes a drawtext whose 'enable' shows it only during its
-    [start,end] window, drawn together with already-spoken words so the
-    line accumulates progressively (karaoke-style).
-    """
+    """Karaoke-style captions: each word appears during its spoken window."""
     if not boundaries:
         return ""
     filters: list[str] = []
-    spoken = []
     for i, w in enumerate(boundaries):
         word = w["text"].strip()
         if not word:
             continue
-        spoken = boundaries[: i + 1]
-        # accumulate text of all words up to now
-        line = "".join(b["text"] for b in spoken).strip()
-        start = w["start"]
-        end = w["end"]
-        # keep visible through end; if last word, hold to end of clip via -1
+        line = "".join(b["text"] for b in boundaries[: i + 1]).strip()
+        start, end = w["start"], w["end"]
         enable = f"between(t\\,{start:.3f}\\,{end:.3f})"
         filters.append(
             f"drawtext=fontfile='{_CAP_FONT}':text='{_esc(line)}':"
@@ -71,23 +58,37 @@ def _caption_filter(boundaries: list[dict]) -> str:
     return ",".join(filters)
 
 
-def render_shot_clip(frame: Path, audio: Path, out_clip: Path, idx: int,
-                     boundaries: list[dict] | None = None) -> float:
-    """Render one shot: zoompan the still frame, pair audio, burn synced captions."""
+def render_shot_clip(media: Path, is_video: bool, audio: Path, out_clip: Path,
+                     idx: int, boundaries: list[dict] | None = None) -> float:
     dur = audio_duration(audio)
-    zoom = 1.08 + (idx % 3) * 0.04  # 1.08 .. 1.16 gentle ken-burns zoom
-    base_vf = (
-        f"scale={VIDEO_WIDTH*2}:{VIDEO_HEIGHT*2},"
-        f"zoompan=z='min({zoom},1.5)':d=1:x='iw/2':y='ih/2':"
-        f"s={VIDEO_WIDTH}x{VIDEO_HEIGHT},"
-        f"trim=duration={dur:.2f},setpts=PTS-STARTPTS,"
-        f"fade=t=in:st=0:d=0.3,fade=t=out:st={max(0,dur-0.3):.2f}:d=0.3,"
-        f"format=yuv420p"
-    )
     cap_vf = _caption_filter(boundaries or [])
+
+    if is_video:
+        # Runway B-roll: trim to narration length, fade, then captions
+        base_vf = (
+            f"trim=duration={dur:.2f},setpts=PTS-STARTPTS,"
+            f"scale={VIDEO_WIDTH}:{VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,"
+            f"pad={VIDEO_WIDTH}:{VIDEO_HEIGHT}:(ow-iw)/2:(oh-ih)/2,"
+            f"fade=t=in:st=0:d=0.3,fade=t=out:st={max(0,dur-0.3):.2f}:d=0.3,"
+            f"format=yuv420p"
+        )
+    else:
+        zoom = 1.08 + (idx % 3) * 0.04
+        base_vf = (
+            f"scale={VIDEO_WIDTH*2}:{VIDEO_HEIGHT*2},"
+            f"zoompan=z='min({zoom},1.5)':d=1:x='iw/2':y='ih/2':"
+            f"s={VIDEO_WIDTH}x{VIDEO_HEIGHT},"
+            f"trim=duration={dur:.2f},setpts=PTS-STARTPTS,"
+            f"fade=t=in:st=0:d=0.3,fade=t=out:st={max(0,dur-0.3):.2f}:d=0.3,"
+            f"format=yuv420p"
+        )
+
     vf = base_vf + ("," + cap_vf) if cap_vf else base_vf
+    # `-loop 1` only for still images; videos are read once.
+    media_input = ["-loop", "1", "-i", str(media)] if not is_video else ["-i", str(media)]
     cmd = [
-        "ffmpeg", "-y", "-loop", "1", "-i", str(frame),
+        "ffmpeg", "-y",
+        *media_input,
         "-i", str(audio), "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-vf", vf,
         "-c:a", "aac", "-b:a", "192k",

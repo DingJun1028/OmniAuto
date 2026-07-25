@@ -5,6 +5,7 @@ driven by n8n webhooks, the built-in web UI, or any client.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -48,6 +49,38 @@ def job(job_id: str):
     if not j:
         raise HTTPException(404, "job not found")
     return j
+
+
+# ---- n8n webhook (IDEA.md module 1 / orchestration) ----
+# n8n posts { "title", "script" } (or a "text" field) and gets a
+# synchronous job result, so it can be dropped into any n8n flow as an
+# HTTP Request node and chained with scheduling / other services.
+class WebhookIn(BaseModel):
+    title: str = "Untitled"
+    script: str | None = None
+    text: str | None = None   # alias accepted by some n8n setups
+
+    @property
+    def body(self) -> str:
+        return self.script or self.text or ""
+
+
+@app.post("/webhook/n8n")
+def webhook_n8n(payload: WebhookIn):
+    script = payload.body
+    if not script.strip():
+        raise HTTPException(400, "missing 'script' or 'text'")
+    job = pipeline.enqueue(script, payload.title)
+    # Return a compact, n8n-friendly shape.
+    res = json.loads(job["result"]) if job.get("result") else {}
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "title": job["title"],
+        "video_url": res.get("video_url"),
+        "shots": res.get("shots"),
+        "error": res.get("error") if job["status"] == "failed" else None,
+    }
 
 
 @app.get("/api/jobs/{job_id}/video")

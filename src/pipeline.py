@@ -26,8 +26,8 @@ def run_pipeline(job_id: str, script: str, title: str) -> str:
     shot_dicts = [s.to_dict() if isinstance(s, Shot) else s for s in shots]
     db.update_job(job_id, status="tts", progress=20, payload=__json(shot_dicts))
 
-    # 3 + 4: per-shot audio (+ word timings) + frame
-    frames, audios, all_boundaries = [], [], []
+    # 3 + 4: per-shot audio (+ word timings) + media (gradient still or Runway B-roll)
+    medias, is_videos, audios, all_boundaries = [], [], [], []
     total = len(shots)
     for i, s in enumerate(shots):
         sd = s.to_dict() if isinstance(s, Shot) else s
@@ -37,16 +37,19 @@ def run_pipeline(job_id: str, script: str, title: str) -> str:
         path, bounds, _silent = tts.synthesize(sd["narration"], a)
         audios.append(a)
         all_boundaries.append(bounds)
-        f = work / f"shot_{idx}.png"
-        visuals.render_shot_frame(sd, idx, total, f)
-        frames.append(f)
+        png = work / f"shot_{idx}.png"
+        mp4 = work / f"shot_{idx}.broll.mp4"
+        media, is_video = visuals.render_shot_media(sd, idx, total, png, mp4)
+        medias.append(media)
+        is_videos.append(is_video)
 
     # 5: render per-shot clips (with synced captions) then concat
     db.update_job(job_id, status="rendering", progress=85)
     clips = []
-    for i, (f, a) in enumerate(zip(frames, audios)):
+    for i, (m, a) in enumerate(zip(medias, audios)):
         clip = work / f"clip_{i+1}.mp4"
-        renderer.render_shot_clip(f, a, clip, i + 1, boundaries=all_boundaries[i])
+        renderer.render_shot_clip(m, is_videos[i], a, clip, i + 1,
+                                  boundaries=all_boundaries[i])
         clips.append(clip)
     video = work / "final.mp4"
     renderer.render_final(clips, video, shot_dicts)

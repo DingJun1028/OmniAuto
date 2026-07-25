@@ -1,0 +1,84 @@
+{
+  "name": "AI Station - scheduled video generation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 9 * * *" }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "Daily 09:00 Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://<AI_STATION_HOST>:8000/webhook/n8n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": \"每日快報 {{ $now.format('YYYY-MM-DD') }}\",\n  \"script\": \"在此放你的腳本。例如：今天發生了什麼事。我們用 AI Station 自動生成這支影片。\"\n}"
+      },
+      "id": "http",
+      "name": "Generate Video (AI Station)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "rules": [
+            { "value1": "={{ $json.status }}", "operation": "equals", "value2": "done" }
+          ]
+        }
+      },
+      "id": "check",
+      "name": "Succeeded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [790, 300]
+    },
+    {
+      "parameters": {
+        "content": "=🎬 新影片完成：{{ $json.title }}\n{{ $json.video_url }}"
+      },
+      "id": "notify",
+      "name": "Notify (Discord/Slack)",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [1040, 220],
+      "notesInFlow": true,
+      "notes": "替換為 Slack / Telegram / Email 節點皆可"
+    },
+    {
+      "parameters": {
+        "content": "=⚠️ AI Station 失敗：{{ $json.error }}"
+      },
+      "id": "alert",
+      "name": "Alert on failure",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [1040, 400]
+    }
+  ],
+  "connections": {
+    "Daily 09:00 Schedule": { "main": [ [ { "node": "Generate Video (AI Station)", "type": "main", "index": 0 } ] ] },
+    "Generate Video (AI Station)": { "main": [ [ { "node": "Succeeded?", "type": "main", "index": 0 } ] ] },
+    "Succeeded?": {
+      "main": [
+        [ { "node": "Notify (Discord/Slack)", "type": "main", "index": 0 } ],
+        [ { "node": "Alert on failure", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "versionId": 1,
+  "meta": { "instanceId": "ai-station" },
+  "pinData": {}
+}

@@ -43,9 +43,47 @@ curl -X POST http://localhost:8000/api/jobs \
   -H 'Content-Type: application/json' \
   -d '{"title":"宇宙簡史","script":"宇宙浩瀚無垠。科學家持續探索。"}'
 
+# n8n Webhook 入口（同步回傳 job_id / status / video_url）
+curl -X POST http://localhost:8000/webhook/n8n \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"每日快報","script":"今天的新聞。我們用 AI Station 自動生成這支影片。"}'
+
 # 查詢作業
 curl http://localhost:8000/api/jobs
 curl http://localhost:8000/api/jobs/<job_id>
+```
+
+### n8n 排程 / 自動化
+
+`n8n/workflow.json` 是一個可直接匯入的範例流程：
+
+1. **Schedule Trigger** — 每天 09:00 觸發（cron 可改）
+2. **HTTP Request** — POST 到 `…/webhook/n8n`，body 帶 `title` + `script`
+3. **IF** — 依 `status` 分支
+4. **Discord / Slack / Telegram** — 成功傳影片網址，失敗傳錯誤
+
+在 n8n 中：`Workflows → 匯入 from File` 選 `n8n/workflow.json`，把
+`http://<AI_STATION_HOST>:8000` 改成你部署的位置（Docker / VPS）即可。
+AI Station 也可用 Docker 跑在自有 VPS 上，完全對應 IDEA.md「n8n 部署於 VPS」。
+
+## Runway 動態 B-roll (模組 4 雲端啟用)
+
+填入 `RUNWAY_API_KEY` 後，每個鏡頭會改由 Runway 文字生影片產生 AI B-roll
+片段（不再是靜態漸層圖）。未填則自動回落免費漸層背景。B-roll 模式會走
+`visuals.generate_broll()`（非同步輪詢 Runway task），失敗同樣回落漸層。
+> 註：Runway API 端點/輪詢格式依其現行版本調整；本專案提供 best-effort 接線。
+
+## Docker Hub 自動發佈 (CI)
+
+CI（`.github/workflows/build.yml`）在 push/PR 時建置映像：
+- 未設 Docker Hub secrets → 只 build + load 驗證映像可建。
+- 設了 `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`（repo **Settings → Secrets**）→
+  自動 `docker push <user>/aistation:latest`。
+
+```bash
+# 在你自己的機器上跑（有正常 Docker 引擎）：
+docker build -t <user>/aistation:latest .
+docker push <user>/aistation:latest
 ```
 
 ## 目錄結構
@@ -54,15 +92,19 @@ curl http://localhost:8000/api/jobs/<job_id>
 aistation/
 ├── run.py              # 啟動入口
 ├── requirements.txt
+├── Dockerfile          # 含 ffmpeg 的映像
+├── docker-compose.yml
 ├── .env.example        # 所有可選雲端設定
+├── n8n/workflow.json   # n8n 排程/Webhook 範例流程
+├── .github/workflows/build.yml   # 建置 / 推 Docker Hub
 ├── src/
-│   ├── app.py          # FastAPI 控制中心的 HTTP 層
+│   ├── app.py          # FastAPI 控制中心 (含 /webhook/n8n)
 │   ├── config.py       # 設定 + 可插拔功能旗標
 │   ├── db.py           # 模組 7：作業/溯源日誌 (SQLite / NCBDB)
 │   ├── parser.py       # 模組 2：腳本 -> 鏡頭 (免費 / OpenAI)
-│   ├── tts.py          # 模組 3：語音合成 (edge-tts / ElevenLabs)
-│   ├── visuals.py      # 模組 4：畫面生成 (Pillow / Runway)
-│   ├── renderer.py     # 模組 5：ffmpeg 組裝 + Ken-Burns
+│   ├── tts.py          # 模組 3：語音合成 (edge-tts / ElevenLabs) + 逐字時間戳
+│   ├── visuals.py      # 模組 4：漸層 / Runway B-roll
+│   ├── renderer.py      # 模組 5：ffmpeg 組裝 + Ken-Burns + 同步字幕
 │   ├── storage.py      # 模組 6：發布 (本機 / S3)
 │   └── pipeline.py     # 模組 1：管線編排中樞
 ├── web/index.html      # 控制中心的儀表板 UI

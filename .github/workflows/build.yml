@@ -1,4 +1,4 @@
-name: Build AI Station image
+name: Build & publish AI Station image
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
         with:
           context: .
           # CI-only run (no secrets): build + load the image to prove it builds.
-          # With secrets: build + push to Docker Hub.
+          # With secrets: build + push to Docker Hub as <user>/aistation:latest.
           push: ${{ env.DOCKERHUB_USERNAME != '' }}
           load: ${{ env.DOCKERHUB_USERNAME == '' }}
           tags: >-
