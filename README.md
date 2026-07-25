@@ -86,10 +86,12 @@ docker compose up -d
 > `docker-compose.yml` 的 `environment:` 區塊填入，或直接掛載 `.env`。
 > 不填則維持免費本地引擎。
 
-> 本地驗證狀態：本機的 Docker Desktop daemon 在此環境無法啟動
-> （WSL2/Hyper-V 後端問題），故 `docker build` 未在此機實際執行。
-> 應用程式本身（FastAPI + ffmpeg 管線）已透過本地 venv 端對端驗證可產出 MP4；
-> Dockerfile/compose 僅為標準寫法，請在有正常 Docker 引擎的機器上建置。
+> 驗證狀態：
+> - 應用程式（FastAPI + ffmpeg 管線）已透過本地 venv 端對端驗證可產出 MP4。
+> - Docker 映像已透過 GitHub Actions（`.github/workflows/build.yml`）在 Ubuntu
+>   runner 上**實際建置成功**（`docker build` 已通過 CI，run 30155502256）。
+>   本機 Docker Desktop daemon 因 WSL2/Hyper-V 後端問題無法啟動，故本地
+>   `docker build` 改由 CI 代為驗證；有正常 Docker 引擎的機器可直接 `docker build`。
 
 ## 運作流程 (一次生成)
 
