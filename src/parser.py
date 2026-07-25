@@ -130,6 +130,8 @@ def parse_openai(script: str) -> list[Shot]:
 
 
 def parse_script(script: str) -> list[Shot]:
+    if not script or not script.strip():
+        raise ValueError("script must not be empty")
     if USE_OPENAI:
         try:
             return parse_openai(script)

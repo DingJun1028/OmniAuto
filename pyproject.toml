@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-station"
+version = "0.1.0"
+description = "AI Station - full-automatic video production pipeline (control center)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pillow",
+    "edge-tts",
+    "httpx",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pyyaml",
+]
+
+[tool.setuptools]
+py-modules = ["src", "web"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

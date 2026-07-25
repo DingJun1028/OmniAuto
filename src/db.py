@@ -35,6 +35,7 @@ def init_db() -> None:
                 progress    INTEGER DEFAULT 0,
                 payload     TEXT,
                 result      TEXT,
+                file        TEXT,
                 created_at  TEXT,
                 updated_at  TEXT
             )

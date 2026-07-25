@@ -92,3 +92,29 @@ def synthesize(text: str, out_path: Path):
     except Exception:
         _silent_audio(text, out_path)
         return out_path, [], True
+
+
+def _fmt_srt_time(t: float) -> str:
+    ms = int(round(t * 1000))
+    h, ms = divmod(ms, 3_600_000)
+    m, ms = divmod(ms, 60_000)
+    s, ms = divmod(ms, 1000)
+    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
+
+
+def build_srt(boundaries: list[dict]) -> str:
+    """Build a karaoke-style SRT string from word boundaries.
+
+    Each cue highlights the currently-spoken word (wrapped in <b>) over the
+    cumulative spoken text, useful for soft subtitles or an alternative to the
+    burned-in captions (IDEA.md 5). Returns "" when there are no boundaries.
+    """
+    if not boundaries:
+        return ""
+    words = [b["text"] for b in boundaries]
+    cues = []
+    for i, w in enumerate(boundaries):
+        seg = ("").join(words[:i]) + "<b>" + words[i] + "</b>" + ("".join(words[i + 1:]))
+        cue = f"{i + 1}\n{_fmt_srt_time(w['start'])} --> {_fmt_srt_time(w['end'])}\n{seg}"
+        cues.append(cue)
+    return "\n\n".join(cues) + "\n"
