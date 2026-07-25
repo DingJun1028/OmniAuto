@@ -111,6 +111,16 @@ aistation/
 └── examples/sample_script.txt
 ```
 
+## 總作業流程圖
+
+![AI Station 總作業流程圖](diagrams/workflow.excalidraw)
+
+互動版（可編輯）：https://excalidraw.com/#json=IzMNS_pLld_LW0NAaDuol,vqiuPpDPBiXv1u7bm6MwLg
+
+涵蓋：Web 控制台 / n8n Webhook / REST API 三個入口 → 模組1 中樞 → 模組2~7
+（解析→語音→視覺→渲染→發布→溯源），每個雲端模組（ElevenLabs / Runway /
+S3 / NCBDB）以虛線標註「設 key 啟用」→ 輸出 MP4 → Docker / CI / n8n 部署層。
+
 ## 容器化部署 (Docker)
 
 ```bash

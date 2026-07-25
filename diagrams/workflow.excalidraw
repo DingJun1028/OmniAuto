@@ -1,0 +1,84 @@
+{
+  "type": "excalidraw",
+  "version": 2,
+  "source": "hermes-agent",
+  "elements": [
+    { "type": "text", "id": "t0", "x": 60, "y": 36, "width": 520, "height": 32, "text": "AI Station · 總作業流程圖", "fontSize": 26, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "left", "verticalAlign": "top", "originalText": "AI Station · 總作業流程圖", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "e1", "x": 120, "y": 100, "width": 170, "height": 60, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_e1", "type": "text" } ] },
+    { "type": "text", "id": "t_e1", "x": 130, "y": 118, "width": 150, "height": 40, "text": "Web 控制台\n(貼腳本)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "e1", "originalText": "Web 控制台\n(貼腳本)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "e2", "x": 330, "y": 100, "width": 170, "height": 60, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_e2", "type": "text" } ] },
+    { "type": "text", "id": "t_e2", "x": 340, "y": 118, "width": 150, "height": 40, "text": "n8n Webhook\n(排程/自動化)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "e2", "originalText": "n8n Webhook\n(排程/自動化)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "e3", "x": 540, "y": 100, "width": 170, "height": 60, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_e3", "type": "text" } ] },
+    { "type": "text", "id": "t_e3", "x": 550, "y": 118, "width": 150, "height": 40, "text": "REST API\n(外部驅動)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "e3", "originalText": "REST API\n(外部驅動)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_e1", "x": 205, "y": 160, "width": 175, "height": 30, "points": [ [0, 0], [175, 30] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+    { "type": "arrow", "id": "a_e2", "x": 415, "y": 160, "width": 15, "height": 30, "points": [ [0, 0], [15, 30] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+    { "type": "arrow", "id": "a_e3", "x": 625, "y": 160, "width": 145, "height": 30, "points": [ [0, 0], [-145, 30] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "m1", "x": 300, "y": 190, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#d0bfff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_m1", "type": "text" } ] },
+    { "type": "text", "id": "t_m1", "x": 310, "y": 206, "width": 240, "height": 40, "text": "模組1 流程中樞\nFastAPI + 管線編排", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "m1", "originalText": "模組1 流程中樞\nFastAPI + 管線編排", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_m1", "x": 430, "y": 254, "width": 0, "height": 36, "points": [ [0, 0], [0, 36] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "m2", "x": 300, "y": 290, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_m2", "type": "text" } ] },
+    { "type": "text", "id": "t_m2", "x": 310, "y": 306, "width": 240, "height": 40, "text": "模組2 文本解析\n腳本 → N 個鏡頭", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "m2", "originalText": "模組2 文本解析\n腳本 → N 個鏡頭", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_m2", "x": 430, "y": 354, "width": 0, "height": 36, "points": [ [0, 0], [0, 36] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "m3", "x": 300, "y": 390, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_m3", "type": "text" } ] },
+    { "type": "text", "id": "t_m3", "x": 310, "y": 406, "width": 240, "height": 40, "text": "模組3 語音 TTS\nedge-tts (免費)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "m3", "originalText": "模組3 語音 TTS\nedge-tts (免費)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "el", "x": 600, "y": 390, "width": 200, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_el", "type": "text" } ] },
+    { "type": "text", "id": "t_el", "x": 610, "y": 406, "width": 180, "height": 40, "text": "ElevenLabs\n(設 key 啟用)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "el", "originalText": "ElevenLabs\n(設 key 啟用)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+    { "type": "arrow", "id": "a_el", "x": 560, "y": 422, "width": 40, "height": 0, "points": [ [0, 0], [40, 0] ], "endArrowhead": "arrow", "strokeColor": "#e8590c", "strokeStyle": "dashed", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_m3", "x": 430, "y": 454, "width": 0, "height": 36, "points": [ [0, 0], [0, 36] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "m4", "x": 300, "y": 490, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_m4", "type": "text" } ] },
+    { "type": "text", "id": "t_m4", "x": 310, "y": 506, "width": 240, "height": 40, "text": "模組4 視覺\nPillow 漸層背景", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "m4", "originalText": "模組4 視覺\nPillow 漸層背景", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "rw", "x": 600, "y": 490, "width": 200, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_rw", "type": "text" } ] },
+    { "type": "text", "id": "t_rw", "x": 610, "y": 506, "width": 180, "height": 40, "text": "Runway B-roll\n(設 key 啟用)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "rw", "originalText": "Runway B-roll\n(設 key 啟用)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+    { "type": "arrow", "id": "a_rw", "x": 560, "y": 522, "width": 40, "height": 0, "points": [ [0, 0], [40, 0] ], "endArrowhead": "arrow", "strokeColor": "#e8590c", "strokeStyle": "dashed", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_m4", "x": 430, "y": 554, "width": 0, "height": 36, "points": [ [0, 0], [0, 36] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "m5", "x": 300, "y": 590, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_m5", "type": "text" } ] },
+    { "type": "text", "id": "t_m5", "x": 310, "y": 606, "width": 240, "height": 40, "text": "模組5 渲染\nffmpeg + 同步字幕", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "m5", "originalText": "模組5 渲染\nffmpeg + 同步字幕", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_m5", "x": 430, "y": 654, "width": 0, "height": 36, "points": [ [0, 0], [0, 36] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "m6", "x": 300, "y": 690, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_m6", "type": "text" } ] },
+    { "type": "text", "id": "t_m6", "x": 310, "y": 706, "width": 240, "height": 40, "text": "模組6 發布\n本機 storage", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "m6", "originalText": "模組6 發布\n本機 storage", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "s3", "x": 600, "y": 690, "width": 200, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_s3", "type": "text" } ] },
+    { "type": "text", "id": "t_s3", "x": 610, "y": 706, "width": 180, "height": 40, "text": "AWS S3\n(設 key 啟用)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "s3", "originalText": "AWS S3\n(設 key 啟用)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+    { "type": "arrow", "id": "a_s3", "x": 560, "y": 722, "width": 40, "height": 0, "points": [ [0, 0], [40, 0] ], "endArrowhead": "arrow", "strokeColor": "#e8590c", "strokeStyle": "dashed", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_m6", "x": 430, "y": 754, "width": 0, "height": 36, "points": [ [0, 0], [0, 36] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "m7", "x": 300, "y": 790, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#a5d8ff", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_m7", "type": "text" } ] },
+    { "type": "text", "id": "t_m7", "x": 310, "y": 806, "width": 240, "height": 40, "text": "模組7 溯源日誌\nSQLite 本地", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "m7", "originalText": "模組7 溯源日誌\nSQLite 本地", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "ncb", "x": 600, "y": 790, "width": 200, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#ffd8a8", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_ncb", "type": "text" } ] },
+    { "type": "text", "id": "t_ncb", "x": 610, "y": 806, "width": 180, "height": 40, "text": "NCBDB\n(設 key 啟用)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "ncb", "originalText": "NCBDB\n(設 key 啟用)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+    { "type": "arrow", "id": "a_ncb", "x": 560, "y": 822, "width": 40, "height": 0, "points": [ [0, 0], [40, 0] ], "endArrowhead": "arrow", "strokeColor": "#e8590c", "strokeStyle": "dashed", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_m7", "x": 430, "y": 854, "width": 0, "height": 36, "points": [ [0, 0], [0, 36] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "out", "x": 300, "y": 890, "width": 260, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#b2f2bb", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_out", "type": "text" } ] },
+    { "type": "text", "id": "t_out", "x": 310, "y": 906, "width": 240, "height": 40, "text": "輸出 MP4 影片\n可播放 / 下載", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "out", "originalText": "輸出 MP4 影片\n可播放 / 下載", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "arrow", "id": "a_out", "x": 430, "y": 954, "width": 0, "height": 46, "points": [ [0, 0], [0, 46] ], "endArrowhead": "arrow", "strokeColor": "#1e1e1e", "strokeStyle": "solid", "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "dep", "x": 60, "y": 1000, "width": 760, "height": 64, "roundness": { "type": 3 }, "backgroundColor": "#c3fae8", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_dep", "type": "text" } ] },
+    { "type": "text", "id": "t_dep", "x": 70, "y": 1016, "width": 740, "height": 40, "text": "部署：Docker 映像 · GitHub Actions 自動建置 / 推 Docker Hub · n8n 排程 (VPS)", "fontSize": 16, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "dep", "originalText": "部署：Docker 映像 · GitHub Actions 自動建置 / 推 Docker Hub · n8n 排程 (VPS)", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 },
+
+    { "type": "rectangle", "id": "lg", "x": 60, "y": 1100, "width": 760, "height": 40, "roundness": { "type": 3 }, "backgroundColor": "#fff3bf", "fillStyle": "solid", "strokeColor": "#1e1e1e", "roughness": 1, "strokeWidth": 2, "opacity": 100, "boundElements": [ { "id": "t_lg", "type": "text" } ] },
+    { "type": "text", "id": "t_lg", "x": 70, "y": 1110, "width": 740, "height": 24, "text": "圖例：■ 藍 = 免費預設　■ 橙 = 雲端 (設 key 啟用)　■ 綠 = 最終輸出　■ 青 = 部署層　■ 紫 = 中樞", "fontSize": 14, "fontFamily": 1, "strokeColor": "#1e1e1e", "textAlign": "center", "verticalAlign": "middle", "containerId": "lg", "originalText": "圖例：■ 藍 = 免費預設　■ 橙 = 雲端 (設 key 啟用)　■ 綠 = 最終輸出　■ 青 = 部署層　■ 紫 = 中樞", "autoResize": true, "roughness": 1, "strokeWidth": 2, "opacity": 100 }
+  ],
+  "appState": { "viewBackgroundColor": "#ffffff" }
+}
