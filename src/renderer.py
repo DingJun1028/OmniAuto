@@ -16,6 +16,16 @@ from pathlib import Path
 from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH
 
 _CAP_FONT = "C\\:/Windows/Fonts/msyh.ttc"
+# Linux fallback (Debian/Ubuntu + fonts-noto-cjk): Microsoft YaHei won't
+# exist there, so the renderer prefers Noto CJK when present.
+if not Path(_CAP_FONT).exists():
+    for _cand in (
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ):
+        if Path(_cand).exists():
+            _CAP_FONT = _cand.replace("\\", "/").replace(":", "\\:")
+            break
 _CAP_OPTS = (
     "fontcolor=white:fontsize=44:box=1:boxcolor=black@0.55:boxborderw=14:"
     "line_spacing=8:alpha=0.95"
@@ -65,7 +75,8 @@ def render_shot_clip(media: Path, is_video: bool, audio: Path, out_clip: Path,
     cap_vf = _caption_filter(boundaries or [])
 
     if is_video:
-        # Runway B-roll: trim to narration length, fade, then captions
+        # Runway B-roll: trim to narration length, reset PTS (so trim works on
+        # non-zero-start streams), scale/pad, fade, then captions.
         base_vf = (
             f"trim=duration={dur:.2f},setpts=PTS-STARTPTS,"
             f"scale={VIDEO_WIDTH}:{VIDEO_HEIGHT}:force_original_aspect_ratio=decrease,"

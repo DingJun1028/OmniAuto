@@ -19,8 +19,10 @@ def _font(size: int):
     for cand in [
         "C:/Windows/Fonts/msyh.ttc",   # Microsoft YaHei (zh)
         "C:/Windows/Fonts/arial.ttf",
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
         "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/System/Library/Fonts/Supplemental/NotoSansCJK-Regular.ttc",
     ]:
         try:
             return ImageFont.truetype(cand, size)
@@ -77,7 +79,12 @@ def generate_broll(shot: dict, out_path) -> str:
     gradient still.
     """
     prompt = shot.get("visual_prompt", "")
-    headers = {"Authorization": f"Bearer {RUNWAY_API_KEY}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {RUNWAY_API_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "aistation/0.1",
+    }
     # 1) submit generation task
     r = httpx.post(
         "https://api.runwayml.com/v1/text_to_video",
@@ -85,13 +92,16 @@ def generate_broll(shot: dict, out_path) -> str:
         json={"prompt": prompt, "duration": 4, "watermark": False},
         timeout=60,
     )
+    if r.status_code == 410:
+        # Endpoint/version may have changed; surface it instead of silent fail.
+        raise RuntimeError(f"Runway API returned 410 (Gone): {r.text[:200]}")
     r.raise_for_status()
     body = r.json()
     task_id = body.get("id") or body.get("taskId")
     if not task_id:
         url = body.get("video_url") or (body.get("output") or [None])[0]
         if url:
-            out_path.write_bytes(httpx.get(url, timeout=120).content)
+            out_path.write_bytes(httpx.get(url, headers=headers, timeout=120).content)
             return out_path
         raise RuntimeError("Runway did not return a task id or url")
     # 2) poll until done
@@ -103,7 +113,7 @@ def generate_broll(shot: dict, out_path) -> str:
         if status == "SUCCEEDED":
             url = (data.get("output") or [None])[0]
             if url:
-                out_path.write_bytes(httpx.get(url, timeout=120).content)
+                out_path.write_bytes(httpx.get(url, headers=headers, timeout=120).content)
                 return out_path
             raise RuntimeError("Runway task succeeded but produced no output url")
         if status == "FAILED":
