@@ -17,7 +17,7 @@ from .config import STORAGE_DIR
 from .parser import parse_script, Shot
 
 
-def run_pipeline(job_id: str, script: str, title: str) -> str:
+def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None = None) -> str:
     work = STORAGE_DIR / job_id
     work.mkdir(parents=True, exist_ok=True)
 
@@ -52,7 +52,7 @@ def run_pipeline(job_id: str, script: str, title: str) -> str:
                                   boundaries=all_boundaries[i])
         clips.append(clip)
     video = work / "final.mp4"
-    renderer.render_final(clips, video, shot_dicts)
+    renderer.render_final(clips, video, shot_dicts, brand_preset=brand_preset)
 
     # 6: publish
     db.update_job(job_id, status="publishing", progress=95)
@@ -68,11 +68,11 @@ def run_pipeline(job_id: str, script: str, title: str) -> str:
     return url
 
 
-def enqueue(script: str, title: str) -> dict:
+def enqueue(script: str, title: str, brand_preset: str | None = None) -> dict:
     job_id = uuid.uuid4().hex[:12]
-    db.create_job(job_id, title, {"script": script})
+    db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset})
     try:
-        run_pipeline(job_id, script, title)
+        run_pipeline(job_id, script, title, brand_preset=brand_preset)
     except Exception as e:  # keep the job record even on failure
         db.update_job(job_id, status="failed", result=__json({"error": str(e)}))
     return db.get_job(job_id)  # type: ignore[return-value]

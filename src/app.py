@@ -23,6 +23,7 @@ db.init_db()
 class ScriptIn(BaseModel):
     title: str = "Untitled"
     script: str
+    brand_preset: str | None = None  # e.g. "sushi_dr" for 壽司博士 Dr. Source
 
 
 @app.get("/api/health")
@@ -34,8 +35,31 @@ def health():
 def create_job(payload: ScriptIn):
     if not payload.script.strip():
         raise HTTPException(400, "script is empty")
-    job = pipeline.enqueue(payload.script, payload.title)
+    job = pipeline.enqueue(payload.script, payload.title, brand_preset=payload.brand_preset)
     return job
+
+
+@app.get("/api/brand")
+def brand_info(preset: str = "sushi_dr"):
+    from . import brand
+
+    try:
+        return brand.get_brand(preset)
+    except KeyError:
+        raise HTTPException(404, f"unknown brand preset: {preset}")
+
+
+@app.get("/api/series")
+def series_registry():
+    """壽司博士 channel product lines + first-quarter 母題."""
+    from . import brand
+
+    return {
+        "brand": brand.BRAND["name"],
+        "formula": brand.BRAND["formula"],
+        "series": brand.SERIES,
+        "seed_topics": brand.SEED_TOPICS,
+    }
 
 
 @app.get("/api/jobs")
@@ -59,6 +83,7 @@ class WebhookIn(BaseModel):
     title: str = "Untitled"
     script: str | None = None
     text: str | None = None   # alias accepted by some n8n setups
+    brand_preset: str | None = None  # "sushi_dr" to render on-brand
 
     @property
     def body(self) -> str:
@@ -70,7 +95,7 @@ def webhook_n8n(payload: WebhookIn):
     script = payload.body
     if not script.strip():
         raise HTTPException(400, "missing 'script' or 'text'")
-    job = pipeline.enqueue(script, payload.title)
+    job = pipeline.enqueue(script, payload.title, brand_preset=payload.brand_preset)
     # Return a compact, n8n-friendly shape.
     res = json.loads(job["result"]) if job.get("result") else {}
     return {

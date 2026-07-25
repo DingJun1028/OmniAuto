@@ -10,8 +10,12 @@ Runs fully headless via ffmpeg; no GPU required.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import tempfile
 from pathlib import Path
+
+from PIL import Image, ImageDraw
 
 from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH
 
@@ -30,6 +34,21 @@ _CAP_OPTS = (
     "fontcolor=white:fontsize=44:box=1:boxcolor=black@0.55:boxborderw=14:"
     "line_spacing=8:alpha=0.95"
 )
+
+
+def _hex(c: str) -> tuple:
+    c = c.lstrip("#")
+    return tuple(int(c[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def _title_font(size: int):
+    """Reuse the CJK-capable font resolution from visuals for on-brand slates."""
+    from . import visuals
+
+    return visuals._font(size)
+
+
+_CAP_TITLE = _CAP_FONT  # same family, used by make_brand_intro via _title_font
 
 
 def audio_duration(path: Path) -> float:
@@ -110,13 +129,59 @@ def render_shot_clip(media: Path, is_video: bool, audio: Path, out_clip: Path,
     return dur
 
 
-def render_final(shot_clips: list[Path], video_out: Path, shots: list[dict]) -> Path:
+def make_brand_intro(preset: str = "sushi_dr", out: Path | None = None) -> Path:
+    """Generate the 壽司博士 Dr. Source opening slate (深藍→暖金, name + tagline).
+
+    Returns a short silent MP4 used as the video's first beat so every clip
+    carries the channel's visual identity without extra authoring.
+    """
+    from . import brand as _brand
+
+    b = _brand.get_brand(preset)
+    if out is None:
+        out = Path(tempfile.mkdtemp()) / "brand_intro.mp4"
+    out = Path(out)
+    w, h = VIDEO_WIDTH, VIDEO_HEIGHT
+    fd, tmp = tempfile.mkstemp(suffix=".png")
+    os.close(fd)
+    try:
+        img = Image.new("RGB", (w, h), _hex(b["palette"]["deep_blue"]))
+        d = ImageDraw.Draw(img, "RGBA")
+        d.rectangle([0, h - 180, w, h], fill=_hex(b["palette"]["warm_gold"]))
+        d.text((w // 2, h // 2 - 40), b["name"], font=_title_font(54),
+               fill=(243, 237, 225), anchor="mm")
+        d.text((w // 2, h // 2 + 30), b["tagline"], font=_title_font(30),
+               fill=(16, 36, 63), anchor="mm")
+        img.save(tmp)
+        cmd = [
+            "ffmpeg", "-y", "-loop", "1", "-i", tmp,
+            "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+            "-t", "2.4", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-shortest", str(out),
+        ]
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+    return out
+
+
+def render_final(shot_clips: list[Path], video_out: Path,
+                 shots: list[dict], brand_preset: str | None = None) -> Path:
     if not shot_clips:
         raise RuntimeError("No shots rendered.")
+    video_out = Path(video_out)
     inputs = []
     for c in shot_clips:
         inputs += ["-i", str(c)]
     n = len(shot_clips)
+    if brand_preset:
+        try:
+            intro = make_brand_intro(brand_preset, out=video_out.parent / "brand_intro.mp4")
+            inputs = ["-i", str(intro)] + inputs
+            n += 1
+        except Exception:
+            pass  # intro is a nicety; never fail the render because of it
     concat = "".join(f"[{i}:v][{i}:a]" for i in range(n))
     cmd = [
         "ffmpeg", "-y", *inputs, "-filter_complex",

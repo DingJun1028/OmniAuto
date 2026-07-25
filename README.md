@@ -121,7 +121,36 @@ aistation/
 （解析→語音→視覺→渲染→發布→溯源），每個雲端模組（ElevenLabs / Runway /
 S3 / NCBDB）以虛線標註「設 key 啟用」→ 輸出 MP4 → Docker / CI / n8n 部署層。
 
-### 單支影片生成時序圖
+### 壽司博士 Dr. Source 品牌預設（sushi_dr）
+
+專案內建《創價未來｜壽司博士 Dr. Source AI 協作視頻頻道規劃書 v1.0》的品牌預設，
+讓管線直接產出符合頻道憲法的影片：深藍/暖金/米白/綠 配色、片頭標板、以及
+「場景→衝突→洞察→方法→反思」的腳本 DNA。
+
+用 DNA 標記寫腳本，解析器會「一標記一鏡位」自動套用對應品牌配色：
+
+```
+【場景】一家公司花了一年寫完永續報告，老闆只看了十分鐘。
+【衝突】報告完成了，公司卻沒有改變。
+【洞察】因為 ESG 被當成交付物，而不是經營系統。
+【方法】用 1.0、1.5、2.0 檢查公司目前的位置。
+【反思】如果永續只讓報告更漂亮，卻沒減少任何人的苦，算永續嗎？
+```
+
+呼叫時帶 `brand_preset`：
+
+```bash
+curl -X POST localhost:8000/api/jobs \
+  -H 'content-type: application/json' \
+  -d '{"script":"...上述 DNA 腳本...","brand_preset":"sushi_dr"}'
+```
+
+- `GET /api/brand`：回傳品牌設定（名稱/標語/配色/憲法/AI 邊界）。
+- `GET /api/series`：回傳十條系列產品線 + 六個首季母題（含壽司博士原創判斷）。
+- n8n webhook 亦接受 `brand_preset` 欄位。
+- 未標記的腳本退回一般免費解析器；設 `OPENAI_API_KEY` 則改走 GPT-4o 解析。
+
+## 容器化部署 (Docker)
 
 ![AI Station 時序圖](diagrams/sequence.excalidraw)
 

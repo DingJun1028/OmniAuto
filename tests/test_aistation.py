@@ -177,3 +177,75 @@ def test_n8n_workflow_has_schedule_and_http():
     types = {n["type"] for n in n8n["nodes"]}
     assert "n8n-nodes-base.httpRequest" in types
     assert "n8n-nodes-base.scheduleTrigger" in types
+
+
+# ---- 壽司博士 brand preset integration (channel planning bible v1.0) ----
+
+def test_brand_preset_present():
+    from src import brand
+
+    b = brand.get_brand("sushi_dr")
+    assert b["name"] == "創價未來｜壽司博士 Dr. Source"
+    assert b["tagline"] == "看懂變局，創造價值，帶著人性前行。"
+    assert len(b["constitution"]) == 5
+    assert len(brand.SEED_TOPICS) == 6
+    assert len(brand.SERIES) >= 10
+
+
+def test_brand_dna_palette_mapping():
+    from src import brand
+
+    for seg in ["場景", "衝突", "洞察", "方法", "反思"]:
+        theme = brand.dna_palette(seg)
+        assert len(theme) == 3 and theme[2]
+    assert brand.dna_palette("其他")[2] == "brand"
+
+
+def test_dna_parse_one_shot_per_beat():
+    from src import brand
+
+    script = (
+        "【場景】一家公司花了一年寫完永續報告，老闆只看了十分鐘。\n"
+        "【衝突】報告完成了，公司卻沒有改變。\n"
+        "【洞察】因為 ESG 被當成交付物，而不是經營系統。\n"
+        "【方法】用 1.0、1.5、2.0 檢查公司位置。\n"
+        "【反思】如果永續只讓報告更漂亮，卻沒減少任何人的苦，算永續嗎？\n"
+    )
+    beats = brand.parse_dna(script)
+    assert beats is not None
+    assert [b[0] for b in beats] == ["場景", "衝突", "洞察", "方法", "反思"]
+    assert brand.parse_dna("這是一段普通腳本，沒有標記。") is None
+
+
+def test_parser_uses_dna_markers():
+    from src import parser
+
+    script = (
+        "【場景】城市不是替人民設計。\n"
+        "【衝突】市民的需求常被專家最佳化取代。\n"
+        "【洞察】公共價值來自共創。\n"
+        "【方法】用三個共創問題啟動參與。\n"
+        "【反思】你上一次被詢問，是什麼時候？\n"
+    )
+    shots = parser.parse_script(script)
+    assert len(shots) == 5
+    assert shots[0].theme[2] == "scene"
+    assert shots[-1].theme[2] == "reflection"
+
+
+def test_api_series_endpoint():
+    from src import app
+    from fastapi.testclient import TestClient
+
+    c = TestClient(app.app)
+    r = c.get("/api/series")
+    assert r.status_code == 200
+    body = r.json()
+    assert "創價未來" in body["brand"]
+    assert "ESG做完了然後呢" in body["series"]
+    rb = c.get("/api/brand")
+    assert rb.status_code == 200 and rb.json()["host"] == "壽司博士 Dr. Source"
+    script = "【場景】測試場景。\n【反思】測試反思。\n"
+    rj = c.post("/api/jobs", json={"script": script, "brand_preset": "sushi_dr"})
+    assert rj.status_code == 200
+    assert rj.json()["status"] in ("done", "failed")

@@ -19,6 +19,7 @@ from typing import Optional
 import httpx
 
 from .config import OPENAI_API_KEY, OPENAI_MODEL, USE_OPENAI
+from . import brand
 
 # Simple keyword -> visual style mapping so the free path produces
 # semantically appropriate background tints without any AI call.
@@ -129,9 +130,39 @@ def parse_openai(script: str) -> list[Shot]:
     ]
 
 
+def parse_dna_script(script: str) -> list[Shot] | None:
+    """If the script uses 壽司博士 DNA markers (【場景】【衝突】【洞察】【方法】【反思】),
+    produce one on-brand shot per beat. Returns None when no markers are found."""
+    beats = brand.parse_dna(script)
+    if not beats:
+        return None
+    shots: list[Shot] = []
+    for label, text in beats:
+        theme = brand.dna_palette(label)
+        caption = text[:40]
+        prompt = (
+            f"On-brand {theme[2]} visual for 壽司博士 Dr. Source: "
+            f"{text[:120]} — no neon, no robot-brain, no floating data clichés"
+        )
+        shots.append(
+            Shot(
+                index=len(shots) + 1,
+                narration=text,
+                visual_prompt=prompt,
+                caption=caption,
+                theme=theme,
+            )
+        )
+    return shots
+
+
 def parse_script(script: str) -> list[Shot]:
     if not script or not script.strip():
         raise ValueError("script must not be empty")
+    # 1) 壽司博士 brand DNA markers take priority (structured, on-brand).
+    dna = parse_dna_script(script)
+    if dna:
+        return dna
     if USE_OPENAI:
         try:
             return parse_openai(script)
