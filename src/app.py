@@ -6,15 +6,15 @@ driven by n8n webhooks, the built-in web UI, or any client.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 import hmac
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 from . import db, pipeline
-from . import config
 from . import config
 from .config import BASE_DIR, feature_summary, setup_logging, log
 
@@ -27,6 +27,36 @@ class ScriptIn(BaseModel):
     title: str = "Untitled"
     script: str
     brand_preset: str | None = None  # e.g. "sushi_dr" for 壽司博士 Dr. Source
+
+
+# ---- Lightweight in-memory rate limiter (best-practice: abuse resistance) ----
+# Sliding-window per client IP. Prevents a public free-tier VPS from being
+# hammered by unbounded /api/jobs or /webhook/n8n submissions. Not shared
+# across workers (single-process uvicorn here), which is sufficient for this
+# deployment; swap for redis if scaled out.
+import time
+from collections import defaultdict, deque
+
+_RATE_LIMIT = int(os.getenv("RATE_LIMIT_PER_MIN", "30"))  # requests / minute / IP
+_RATE_BUCKETS: dict[str, deque] = defaultdict(deque)
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("X-Forwarded-For")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def rate_limit(request: Request):
+    now = time.time()
+    bucket = _RATE_BUCKETS[_client_ip(request)]
+    # drop timestamps older than 60s
+    while bucket and bucket[0] <= now - 60:
+        bucket.popleft()
+    if len(bucket) >= _RATE_LIMIT:
+        raise HTTPException(429, "rate limit exceeded; slow down")
+    bucket.append(now)
 
 
 @app.get("/api/health")
@@ -44,7 +74,7 @@ def metrics():
 
 
 @app.post("/api/jobs")
-def create_job(payload: ScriptIn):
+def create_job(payload: ScriptIn, request: Request, _: None = Depends(rate_limit)):
     """Submit a job. Returns immediately (202) with the job id; the heavy
     render runs in the background so long scripts don't block the request.
     Poll GET /api/jobs/{id} for status."""
@@ -121,7 +151,7 @@ def _check_webhook_auth(request: "Request"):
 
 
 @app.post("/webhook/n8n")
-def webhook_n8n(payload: WebhookIn, request: "Request"):
+def webhook_n8n(payload: WebhookIn, request: "Request", _: None = Depends(rate_limit)):
     _check_webhook_auth(request)
     script = payload.body
     if not script.strip():

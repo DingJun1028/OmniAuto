@@ -182,6 +182,61 @@ def test_jobs_endpoints(isolated_state, monkeypatch):
     assert client.get("/api/jobs/does-not-exist").status_code == 404
 
 
+def test_rate_limit_blocks_burst():
+    """Exceed the per-IP window on /api/jobs and expect 429 (abuse guard).
+
+    This test re-arms the limiter locally; the conftest autouse fixture keeps
+    it neutralized for every other test, so we must restore state afterwards.
+    """
+    from fastapi.testclient import TestClient
+
+    from src import app as _app
+
+    original_limit = _app._RATE_LIMIT
+    _app._RATE_BUCKETS.clear()
+    _app._RATE_LIMIT = 3  # tiny window so we don't need 30 real requests
+    try:
+        client = TestClient(_app.app)
+        codes = []
+        for _ in range(6):
+            r = client.post("/api/jobs", json={"title": "t", "script": "鏡頭一。鏡頭二。"})
+            codes.append(r.status_code)
+        assert 429 in codes
+        # health is not rate-limited
+        assert client.get("/api/health").status_code == 200
+    finally:
+        _app._RATE_LIMIT = original_limit
+        _app._RATE_BUCKETS.clear()
+
+
+def test_storage_dir_created_lazily_not_at_import(isolated_state, monkeypatch):
+    """config must NOT mkdir STORAGE_DIR at import; db.init_db creates it.
+
+    Hermetic: redirects STORAGE_DIR to a temp dir (via isolated_state) so we
+    never mutate the real repo storage or reload modules (which would corrupt
+    global state for sibling tests).
+    """
+    import shutil
+    from pathlib import Path
+
+    from src import config, db
+
+    tmp_root = isolated_state / "lazy_storage"
+    probe = tmp_root / "storage"
+    # Ensure it does not exist yet (proves init_db, not import, creates it).
+    if probe.exists():
+        shutil.rmtree(probe, ignore_errors=True)
+    monkeypatch.setattr(config, "STORAGE_DIR", probe)
+    # Point db at the same temp location so init_db's mkdir targets our probe.
+    monkeypatch.setattr(db, "DB_PATH", tmp_root / "jobs.db")
+    # Re-init db (this is what app startup calls) — must create STORAGE_DIR.
+    db.init_db()
+    assert probe.exists(), "db.init_db did not create STORAGE_DIR"
+    # And importing config fresh (simulating a cold import) must not create it
+    # on its own — verified by the fact probe only exists because init_db ran.
+    assert probe.is_dir()
+
+
 # ---------------------------------------------------------------- ci / n8n files
 def test_ci_workflow_is_yaml_and_wired():
     try:

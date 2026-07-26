@@ -25,6 +25,11 @@ def _conn() -> sqlite3.Connection:
 
 
 def init_db() -> None:
+    # Lazily ensure the storage directory exists (config no longer mkdir's at
+    # import time, to avoid polluting the repo root during test imports).
+    from . import config
+
+    config.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     with _conn() as conn:
         conn.execute(
             """

@@ -44,7 +44,10 @@ def setup_logging(level: int | None = None) -> logging.Logger:
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STORAGE_DIR = BASE_DIR / "storage"
-STORAGE_DIR.mkdir(parents=True, exist_ok=True)
+# NOTE: STORAGE_DIR is intentionally NOT created at import time. Creating it
+# here pollutes the repo root on every `import src.config` (including tests)
+# and caused flaky fixture state. It is created lazily by db.init_db() (which
+# runs at app startup) and by pipeline.run_pipeline() before writing outputs.
 
 # ---- Rendering ----
 VIDEO_WIDTH = int(os.getenv("VIDEO_WIDTH", "1280"))

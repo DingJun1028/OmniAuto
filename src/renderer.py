@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -132,7 +133,10 @@ def make_brand_intro(preset: str = "sushi_dr", out: Path | None = None) -> Path:
 
     b = _brand.get_brand(preset)
     if out is None:
-        out = Path(tempfile.mkdtemp()) / "brand_intro.mp4"
+        tmp_dir = tempfile.mkdtemp()
+        out = Path(tmp_dir) / "brand_intro.mp4"
+    else:
+        tmp_dir = None
     out = Path(out)
     w, h = VIDEO_WIDTH, VIDEO_HEIGHT
     fd, tmp = tempfile.mkstemp(suffix=".png")
@@ -156,6 +160,8 @@ def make_brand_intro(preset: str = "sushi_dr", out: Path | None = None) -> Path:
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
+        if tmp_dir and os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
     return out
 
 
