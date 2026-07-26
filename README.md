@@ -189,20 +189,27 @@ tests/         pytest 套件
 
 ---
 
-## 11. 部署到 VPS（esggo 場域）
+## 11. 部署到 VPS（esggo 場域 / 永久免費雲端）
 
-容器映像已推送：**`docker.io/dingjunhong1028/aistation:latest`**。
-`deploy/` 目錄提供可複用的生產堆疊（已驗證語法）：
+容器映像已推送為 **多架構（linux/amd64 + linux/arm64）**：
+**`docker.io/dingjunhong1028/aistation:latest`** —— 在 Oracle Always-Free ARM64 VPS 上
+**原生跑 arm64**，不經 QEMU，渲染效能最佳。`deploy/` 提供可複用的生產堆疊。
+
+- 永久免費雲端（Oracle Always-Free ARM）完整步驟見 **`deploy/oracle-free.md`**。
+- esggo VPS（161.118.252.147）走同一套 `deploy.sh`。
+
+`deploy/`：
 
 ```
 deploy/
-  docker-compose.yml              # pull 映像，:8000 僅綁 localhost，volume 掛 ./storage，含 healthcheck
+  docker-compose.yml              # pull 多架構映像，:8000 僅綁 localhost，volume 掛 ./storage，含 healthcheck
   nginx/aistation.esggo.co.conf   # 反向代理 + X-Forwarded-*（HTTP 區塊；HTTPS 區塊註解待 certbot）
-  deploy.sh USER@HOST [DOMAIN]    # rsync + compose up -d + 裝 nginx site + 健康檢查
+  deploy.sh USER@HOST [DOMAIN]    # bootstrap docker/nginx + rsync + compose up -d + 裝 nginx + 健康檢查
   .env.example                    # 伺服器端環境變數範本（複製為 .env，勿進版控）
+  oracle-free.md                  # 永久免費雲端（Oracle Always-Free ARM）完整部署指南
 ```
 
-**本機一鍵部署**（需本機能 SSH 進 VPS，且 VPS 已裝 docker/compose + nginx）：
+**本機一鍵部署**（需本機能 SSH 進 VPS；`deploy.sh` 會在 VPS 上自動裝好 docker/nginx，故 VPS 可為全新免費機）：
 
 ```bash
 # 1) 在 VPS 上：把本機公鑰加入 authorized_keys（只需一次）
