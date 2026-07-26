@@ -1,0 +1,83 @@
+name: Deploy AI Station to VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Public domain/FQDN for the nginx site"
+        required: false
+        default: "aistation.esggo.co"
+  # Also allow auto-deploy on push to main (uncomment to enable).
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Only run if the SSH secret is configured.
+    if: ${{ secrets.SSH_PRIVATE_KEY != '' && secrets.DEPLOY_HOST != '' && secrets.DEPLOY_USER != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install sshpass-free SSH client
+        run: which ssh || (sudo apt-get update && sudo apt-get install -y openssh-client)
+
+      - name: Write SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy via SSH (bootstrap docker/nginx + pull + compose up + nginx)
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DOMAIN: ${{ github.event.inputs.domain || 'aistation.esggo.co' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$USER@$HOST" bash -c "'
+            set -e
+            # 0. bootstrap docker + nginx (idempotent; skip if present)
+            if ! command -v docker >/dev/null 2>&1; then
+              sudo apt-get update && sudo apt-get install -y ca-certificates curl gnupg lsb-release
+              sudo install -m 0755 -d /etc/apt/keyrings
+              sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+              sudo chmod a+r /etc/apt/keyrings/docker.asc
+              echo \"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo \$VERSION_CODENAME) stable\" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+              sudo apt-get update && sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+              sudo systemctl enable --now docker
+            fi
+            if ! command -v nginx >/dev/null 2>&1; then
+              sudo apt-get update && sudo apt-get install -y nginx
+              sudo systemctl enable --now nginx
+            fi
+            # 1. ship deploy files
+            mkdir -p ~/aistation/deploy
+          '"
+          # rsync deploy/ (excluding .env which holds secrets) to the VPS
+          rsync -az --delete --exclude '.env' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            ./deploy/ "$USER@$HOST:~/aistation/deploy"
+          # 2. pull + run + nginx (on the VPS)
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$USER@$HOST" bash -c "'
+            set -e
+            cd ~/aistation/deploy
+            docker compose pull
+            docker compose up -d
+            sudo cp nginx/aistation.esggo.co.conf /etc/nginx/sites-available/'"$DOMAIN"'.conf
+            sudo ln -sf /etc/nginx/sites-available/'"$DOMAIN"'.conf /etc/nginx/sites-enabled/'"$DOMAIN"'.conf
+            sudo nginx -t && sudo systemctl reload nginx
+          '"
+          # 3. health check
+          sleep 6
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$USER@$HOST" \
+            "curl -fsS http://127.0.0.1:8000/api/health && echo" \
+            && echo ">> deploy OK: http://$DOMAIN" \
+            || echo "!! health check failed — see logs: ssh $USER@$HOST 'cd ~/aistation/deploy && docker compose logs --tail=50'"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
