@@ -127,13 +127,13 @@ n8n 用 HTTP Request 節點 POST 到 `/webhook/n8n`，body `{ "title", "script",
 
 ```bash
 pip install -e ".[dev]"
-pytest                       # 28 測試（config/parser/tts/renderer/db/api/security/
+pytest                       # 30 測試（config/parser/tts/renderer/db/api/security/
                              #        integration/runway/openai/webhook/metrics）
 ```
 
 - `test_integration_render_runs_ffmpeg` 跑真 ffmpeg；無 ffmpeg 時自動 skip。
 - 渲染類測試用 `isolated_state` fixture，把 `jobs.db` 與 `storage/` 導向暫存目錄，不污染 repo。
-- 目前 **28 測試全綠**（CI 含 ffmpeg + Noto CJK 字體）。
+- 目前 **30 測試全綠**（CI 含 ffmpeg + Noto CJK 字體）。
 
 ---
 

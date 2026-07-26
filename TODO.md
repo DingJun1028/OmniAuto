@@ -30,7 +30,7 @@
 - ✅ **同步阻塞**：`POST /api/jobs` 改為立即回傳 `queued` + job_id，渲染走背景 `ThreadPoolExecutor`；`/api/jobs/{id}` 輪詢。Webhook 維持同步（n8n 等待結果）。
 
 ## 5. 可擴充性 / Extensibility
-- 🔒 **Docker Hub 自動推映像**：CI 已接好，待你貼 `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`（repo Secrets）。
+- ✅ **Docker Hub 自動推映像**：CI 已接好並實際推送 `docker.io/dingjunhong1028/aistation:latest`（已驗證 `DOCKERHUB_USERNAME`+`DOCKERHUB_TOKEN` 生效，latest tag 已更新）。
 - ✅ **Runway API 實測**：`generate_broll` 保持 best-effort；新增 `test_runway_fallback_mock` 驗證無 key/失敗時回落漸層（不需真 key）。
 - ✅ **OpenAI parser 路徑未測**：新增 `test_parse_openai_mock`（monkeypatch httpx，驗證 Shot 形狀，不需 key）。
 - ✅ **S3 上傳可靠性**：`storage.upload_s3` 加 `ContentType=video/mp4` + `TransferConfig`（並發/分段）；`boto3` 列入 pyproject `[project.optional-dependencies].s3`（免費路徑不受影響）。
@@ -48,4 +48,4 @@
 - ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback / submit 失敗 單元測試已加**。
 
 ---
-下一步建議優先序：⑤ Docker Hub 自動推映像（待你貼 `DOCKERHUB_USERNAME`+`DOCKERHUB_TOKEN`）/ 真 Runway 實測（需密鑰）。其餘 ①②③④⑥⑦ 已修。
+下一步建議優先序：真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）。其餘 ①②③④⑤⑥⑦ 已修。
