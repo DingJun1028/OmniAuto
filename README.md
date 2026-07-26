@@ -184,7 +184,8 @@ tests/         pytest 套件
 - [x] 背景作業失敗標記、webhook 常數時間比對、S3 超時防僵
 - [x] 按 `shot.index` 顯式排序防禦、webhook `ok` 旗標、metrics 儀表板
 - [x] Docker Hub 自動推映像（`DOCKERHUB_*` Secrets → CI 建置並推送 `docker.io/dingjunhong1028/aistation:latest`）
-- [ ] 真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）
+- [x] Runway API 對齊現行規格（`promptText`/`model`/`ratio`，輪詢 `/v1/tasks/{id}`）+ ElevenLabs 語音接線
+- [ ] 真 Runway / ElevenLabs 實測（代碼已接好、`@pytest.mark.cloud` 測試 + CI `cloud-integration` job 待命；待 `RUNWAY_API_KEY` / `ELEVENLABS_API_KEY` 存入 repo Secrets 即自動跑真實呼叫）
 
 ---
 
