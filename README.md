@@ -227,4 +227,36 @@ deploy/
 **不登入 VPS 的做法**：把 `deploy/` 整包交給有權限的人，於 VPS 上
 `docker compose pull && docker compose up -d`，再把 `nginx/...conf` 啟用即可。
 
+**GitHub Actions 一鍵部署**（推薦，免本機 SSH 客戶端）：本 repo 已內建
+`.github/workflows/deploy.yml`，由 `SSH_PRIVATE_KEY` / `DEPLOY_HOST` /
+`DEPLOY_USER` 三個 repo Secrets 驅動。設定好後在 Actions 頁手動 `Run workflow`
+即會 SSH 進 VPS、bootstrap docker/nginx、pull 多架構映像、compose up、啟用
+nginx。同機制另有 `verify.yml`（線上出片端到端驗收）與 `diag.yml`（防火牆/監聽診斷）。
+
+### 上線前必做的兩個控制台動作（非程式碼，需你的雲端權限）
+
+1. **Oracle Cloud Console → 該 VPS 的 Security List**：加入入站規則
+   `80/tcp` 與 `443/tcp`（CIDR `0.0.0.0/0`）。Oracle 預設只開 22，未開 80/443
+   會導致外部打不到（VPS 本機 ufw 已由 `deploy.sh`/`diag.sh` 開好，但 VNIC 層
+   的安全群組仍需手動開）。
+2. **DNS**：將 `aistation.esggo.co` 設 A 紀錄指向 VPS IP `161.118.252.147`
+   （Cloudflare 或域名商後台；子域可設 DNS-only 或橙雲）。
+
+兩者就緒後，於 VPS 執行（或由 `diag.yml` 確認後）啟用 HTTPS：
+
+```bash
+sudo certbot --nginx -d aistation.esggo.co   # 自動簽證 + 改 nginx 轉 443
+```
+
+### 上線證明（已實測）
+
+- 部署：CI `deploy.yml` 跑通 → VPS 容器 `aistation` 啟動、`nginx -t` 通、
+  `http://127.0.0.1:8000/api/health` 回 `{"status":"ok"}`。
+- 線上出片：CI `verify.yml` 對線上 API 丟一段壽司博士 DNA 腳本 → 5 shots 渲染至
+  `done`，並經 `/storage/<job>/final.mp4` 實際取回 **754,577 bytes MP4**
+  （`VIDEO_SERVED_OK`）。免費路徑（edge-tts + ffmpeg + Pillow）在 Oracle
+  Always-Free ARM64 上原生運作。
+- 外部可達性：待上述「安全群組 + DNS」兩項完成後，由
+  `curl https://aistation.esggo.co/api/health` 做最終驗收。
+
 所有雲端金鑰選填；留白即走免費路徑（edge-tts + ffmpeg + Pillow）。
