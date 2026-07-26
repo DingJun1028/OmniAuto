@@ -190,8 +190,10 @@ def test_ci_workflow_is_yaml_and_wired():
         pytest.skip("pyyaml not installed")
     wf = yaml.safe_load((ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8"))
     steps = wf["jobs"]["build"]["steps"]
-    assert any(s.get("uses", "").startswith("docker/build-push-action") for s in steps)
-    assert "push" in steps[-1]["with"]
+    # The Docker build/push step (may be followed by other steps, e.g. a gate).
+    push_steps = [s for s in steps if s.get("uses", "").startswith("docker/build-push-action")]
+    assert push_steps, "docker/build-push-action step missing"
+    assert "push" in push_steps[-1].get("with", {})
 
 
 def test_n8n_workflow_has_schedule_and_http():
