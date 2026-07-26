@@ -60,3 +60,29 @@ jobs:
             }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  cloud-integration:
+    # Real cloud-provider calls (Runway / ElevenLabs). Runs ONLY when the
+    # matching secrets are set, so the default CI stays free + green. Never
+    # blocks the main build (best-effort). Keys are injected as env vars, never
+    # printed or committed.
+    needs: build
+    if: ${{ secrets.RUNWAY_API_KEY != '' || secrets.ELEVENLABS_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ffmpeg + deps
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Run real cloud integration tests
+        env:
+          RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+        run: pytest -m cloud -v

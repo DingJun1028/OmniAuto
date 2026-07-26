@@ -521,3 +521,54 @@ def test_metrics_endpoint_aggregates(isolated_state):
     # at least the brand breakdown reflects the presets we stored
     assert body["brand_breakdown"].get("sushi_dr") == 1
     assert body["brand_breakdown"].get("default") == 1
+
+
+# ---- Real cloud provider integration (marked, runs only when keys exist) ----
+# These are skipped locally / in the default CI. Enable by setting the secrets
+# (CI) or env vars (local) and running `pytest -m cloud`. Keys are never
+# printed or committed.
+
+
+@pytest.mark.cloud
+def test_elevenlabs_real_tts():
+    """Real ElevenLabs call: must return a non-empty audio file.
+
+    Skipped unless ELEVENLABS_API_KEY is set. Word boundaries are not captured
+    by ElevenLabs free tier, so we only assert the audio bytes exist.
+    """
+    import os
+    import pytest
+
+    if not os.environ.get("ELEVENLABS_API_KEY"):
+        pytest.skip("ELEVENLABS_API_KEY not set")
+    from src import tts
+
+    out = Path(tempfile.mkdtemp()) / "el.mp3"
+    path, bounds, silent = tts._tts_elevenlabs(
+        "看懂變局，創造價值，帶著人性前行。", out
+    )
+    assert out.exists() and out.stat().st_size > 1000
+    assert silent is False
+
+
+@pytest.mark.cloud
+def test_runway_real_broll():
+    """Real Runway text-to-video call: must produce a video file.
+
+    Skipped unless RUNWAY_API_KEY is set. Validates the current API shape
+    (POST /v1/text_to_video -> poll /v1/tasks/{id} -> output[0]).
+    """
+    import os
+    import pytest
+
+    if not os.environ.get("RUNWAY_API_KEY"):
+        pytest.skip("RUNWAY_API_KEY not set")
+    from src import visuals
+
+    shot = {
+        "theme": ["#10243f", "#c9a24b", "insight"],
+        "visual_prompt": "a calm ocean at sunrise, soft golden light, cinematic",
+    }
+    out = Path(tempfile.mkdtemp()) / "rw.mp4"
+    path = visuals.generate_broll(shot, out)
+    assert Path(path).exists() and Path(path).stat().st_size > 1000

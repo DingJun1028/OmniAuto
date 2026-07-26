@@ -71,14 +71,14 @@ def render_free_frame(shot: dict, idx: int, total: int, out_path) -> str:
 
 
 def generate_broll(shot: dict, out_path) -> str:
-    """Generate an AI B-roll clip via Runway (text-to-video). Returns video path.
+    """Generate an AI B-roll clip via Runway text-to-video (current API).
 
-    NOTE: untested without RUNWAY_API_KEY. Runway's API is async; this is a
-    best-effort implementation — adjust endpoint/poll shape to the current
-    Runway API. Raises on any failure so the pipeline falls back to the
-    gradient still.
+    Uses POST /v1/text_to_video with model + promptText, then polls
+    GET /v1/tasks/{id} until SUCCEEDED (output is a list of URLs). Raises on
+    any failure so the pipeline falls back to the gradient still.
     """
     prompt = shot.get("visual_prompt", "")
+    model = shot.get("runway_model", "gen3a_turbo")
     headers = {
         "Authorization": f"Bearer {RUNWAY_API_KEY}",
         "Content-Type": "application/json",
@@ -89,7 +89,13 @@ def generate_broll(shot: dict, out_path) -> str:
     r = httpx.post(
         "https://api.runwayml.com/v1/text_to_video",
         headers=headers,
-        json={"prompt": prompt, "duration": 4, "watermark": False},
+        json={
+            "model": model,
+            "promptText": prompt,
+            "ratio": f"{VIDEO_WIDTH}:{VIDEO_HEIGHT}",
+            "duration": 5,
+            "watermark": False,
+        },
         timeout=60,
     )
     if r.status_code == 410:
@@ -97,21 +103,25 @@ def generate_broll(shot: dict, out_path) -> str:
         raise RuntimeError(f"Runway API returned 410 (Gone): {r.text[:200]}")
     r.raise_for_status()
     body = r.json()
-    task_id = body.get("id") or body.get("taskId")
+    task_id = body.get("id") or body.get("taskId") or body.get("task_uuid")
     if not task_id:
+        # Some shapes return the url inline.
         url = body.get("video_url") or (body.get("output") or [None])[0]
         if url:
             out_path.write_bytes(httpx.get(url, headers=headers, timeout=120).content)
             return out_path
         raise RuntimeError("Runway did not return a task id or url")
     # 2) poll until done
-    for _ in range(60):
-        t = httpx.get(f"https://api.runwayml.com/v1/tasks/{task_id}", headers=headers, timeout=30)
+    for _ in range(90):
+        t = httpx.get(
+            f"https://api.runwayml.com/v1/tasks/{task_id}", headers=headers, timeout=30
+        )
         t.raise_for_status()
         data = t.json()
         status = data.get("status")
         if status == "SUCCEEDED":
-            url = (data.get("output") or [None])[0]
+            outs = data.get("output") or []
+            url = outs[0] if outs else (data.get("video_url") or data.get("url"))
             if url:
                 out_path.write_bytes(httpx.get(url, headers=headers, timeout=120).content)
                 return out_path

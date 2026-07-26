@@ -34,3 +34,6 @@ ai-station = "src.app:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = [
+    "cloud: real cloud-provider integration (Runway/ElevenLabs); runs only when API keys are present",
+]
