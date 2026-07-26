@@ -55,22 +55,29 @@ def main() -> int:
 
     final = _get(f"/api/jobs/{job_id}")
     result = final.get("result") or {}
-    file_path = result.get("file") if isinstance(result, dict) else None
+    video_url = result.get("video_url") if isinstance(result, dict) else None
     print("final status:", status)
     print("result:", json.dumps(result, ensure_ascii=False)[:300])
 
-    if status != "done" or not file_path:
+    if status != "done" or not video_url:
         print("VERIFY FAILED: job did not finish with a video")
         return 1
 
-    import os
-
-    if os.path.exists(file_path) and os.path.getsize(file_path) > 1000:
-        print(f"VIDEO_EXISTS: {file_path} ({os.path.getsize(file_path)} bytes)")
-        print("VERIFY OK")
-        return 0
-    print(f"VIDEO_MISSING: {file_path}")
-    return 1
+    # Verify end-to-end via the served URL (path-independent; works regardless
+    # of how storage is mounted on the host vs inside the container).
+    url = BASE + video_url
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:
+            data = r.read()
+        if r.status == 200 and len(data) > 1000:
+            print(f"VIDEO_SERVED_OK: {url} ({len(data)} bytes)")
+            print("VERIFY OK")
+            return 0
+        print(f"VIDEO_SERVE_FAILED: status={r.status} bytes={len(data)}")
+        return 1
+    except Exception as e:
+        print(f"VIDEO_SERVE_ERROR: {e}")
+        return 1
 
 
 if __name__ == "__main__":
