@@ -10,8 +10,8 @@
 - ✅ **`audio_duration` 缺 ffprobe 崩潰**：已改為防禦式 fallback（見 pytest）。
 - ✅ **`jobs` 表缺 `file` 欄**：已加（pipeline 寫輸出路徑）。
 - ✅ **背景 job 靜默卡死（嚴重 bug）**：`pipeline.submit` 把 `run_pipeline` 丟進 ThreadPoolExecutor 卻無例外處理，渲染失敗時 job 永遠卡在 `queued`/`rendering`。已修：submit 內包 `_run()` try/except，失敗寫 `failed` + log.exception；新增 `test_submit_marks_failed_on_render_error` 回歸。
-- 🔲 **編號/序列**：`run_final` 目前把 shot_1..N 線性 concat，未來若要按 `shot.index` 顯式排序（防萬一 parser 回傳非遞增）。
-- ✅ **編號/序列防禦**：`run_pipeline` 在建 clips 後改以每 shot 的 `index` 顯式排序再 concat（`render_final` 的 `shots` 參數現為排序後的 shot dicts，長度不符會打 warning）；parser 回傳非遞增 index 也不再影響播放順序。
+- ✅ **編號/序列**：`run_pipeline` 最終 concat 改按各 shot 的 `index` 排序（防 parser 回傳非遞增）；`render_final` 同時收 `shots=有序清單`。（舊 🔲 已結）。
+- ✅ **失敗 video_url 為 None 時前端處理**：webhook 回傳新增 `ok` 旗標（`status==done` 且 `video_url` 存在才 True），`video_url` 失敗時為 None，呼叫方可直接分支（舊 🔲 已結）。
 
 ## 2. 安全 / Security
 - ✅ **n8n Webhook 無認證**：已加 `WEBHOOK_SECRET` 校驗（`X-AI-Station-Key` header / `?key=` query）；未設則維持開放（見 app._check_webhook_auth）。
