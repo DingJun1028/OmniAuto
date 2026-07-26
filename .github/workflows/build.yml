@@ -61,13 +61,25 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Probe cloud secrets (gate output for next job)
+        id: cloud_gate
+        env:
+          RUNWAY_API_KEY: ${{ secrets.RUNWAY_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+        run: |
+          if [ -n "$RUNWAY_API_KEY" ] || [ -n "$ELEVENLABS_API_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
   cloud-integration:
     # Real cloud-provider calls (Runway / ElevenLabs). Runs ONLY when the
-    # matching secrets are set, so the default CI stays free + green. Never
-    # blocks the main build (best-effort). Keys are injected as env vars, never
-    # printed or committed.
+    # matching secrets are set (gated by the build job's cloud_gate output),
+    # so the default CI stays free + green. Best-effort; never blocks the main
+    # build. Keys are injected as env vars, never printed or committed.
     needs: build
-    if: ${{ secrets.RUNWAY_API_KEY != '' || secrets.ELEVENLABS_API_KEY != '' }}
+    if: ${{ needs.build.outputs.cloud_ready == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
