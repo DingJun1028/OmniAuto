@@ -33,6 +33,15 @@ def health():
     return {"status": "ok", "features": feature_summary()}
 
 
+@app.get("/api/metrics")
+def metrics():
+    """Lightweight pipeline observability (TODO pillar 6): throughput,
+    reliability, and per-brand activity aggregated from the job store."""
+    from . import metrics as _metrics
+
+    return _metrics.compute_metrics()
+
+
 @app.post("/api/jobs")
 def create_job(payload: ScriptIn):
     """Submit a job. Returns immediately (202) with the job id; the heavy

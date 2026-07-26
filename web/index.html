@@ -47,6 +47,16 @@
   video{width:100%;border-radius:10px;margin-top:8px;background:#000}
   .hint{color:var(--muted);font-size:12px;margin-top:6px}
   .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
+  .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .stat .num{font-size:26px;font-weight:700;color:var(--txt)}
+  .stat .num.good{color:var(--accent2)}
+  .stat .num.warn{color:var(--warn)}
+  .stat .lbl{font-size:12px;color:var(--muted);margin-top:4px}
+  .stat .sub{font-size:11px;color:var(--muted);margin-top:6px}
+  .brands{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+  .brands .b{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--muted)}
+  .brands .b b{color:var(--accent)}
 </style>
 </head>
 <body>
@@ -68,6 +78,10 @@
     <div class="card">
       <h2>② 作業監控 (Jobs)</h2>
       <div id="jobs"><div class="empty">尚無作業</div></div>
+    </div>
+    <div class="card" style="grid-column:1/-1">
+      <h2>③ 生產線指標 (Metrics)</h2>
+      <div id="metrics" class="mgrid"><div class="empty">載入中…</div></div>
     </div>
   </div>
 </main>
@@ -140,6 +154,34 @@ function startPolling(){
 $('#go').addEventListener('click', submit);
 loadFeat();
 refresh();
+loadMetrics();
+setInterval(loadMetrics, 5000);
+
+async function loadMetrics(){
+  try{
+    const m = await fetch('/api/metrics').then(r=>r.json());
+    const rate = m.success_rate==null ? '—' : m.success_rate + '%';
+    const rateCls = m.success_rate==null ? '' : (m.success_rate >= 80 ? 'good' : 'warn');
+    const avg = m.avg_render_seconds==null ? '—' : m.avg_render_seconds + 's';
+    const brands = (m.top_brands||[])
+      .map(b=>`<span class="b">${b.brand} <b>${b.count}</b></span>`).join('');
+    $('#metrics').innerHTML = `
+      <div class="stat"><div class="num">${m.total}</div><div class="lbl">總作業數</div>
+        <div class="sub">近 24h：${m.last_24h_count}</div></div>
+      <div class="stat"><div class="num ${rateCls}">${rate}</div><div class="lbl">成功率</div>
+        <div class="sub">done ${m.by_status.done||0} · failed ${m.by_status.failed||0}</div></div>
+      <div class="stat"><div class="num">${avg}</div><div class="lbl">平均渲染</div>
+        <div class="sub">完成作業牆鐘時間</div></div>
+      <div class="stat"><div class="num">${(m.by_status.rendering||0)+(m.by_status.tts||0)+(m.by_status.parsing||0)+(m.by_status.publishing||0)}</div>
+        <div class="lbl">進行中</div>
+        <div class="sub">queued ${m.by_status.queued||0}</div></div>
+      <div class="stat" style="grid-column:1/-1"><div class="lbl">品牌分布</div>
+        <div class="brands">${brands || '<span class="b">無資料</span>'}</div></div>
+    `;
+  }catch(e){
+    $('#metrics').innerHTML = '<div class="empty">指標載入失敗</div>';
+  }
+}
 </script>
 </body>
 </html>

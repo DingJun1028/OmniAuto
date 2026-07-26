@@ -458,3 +458,34 @@ def test_integration_render_runs_ffmpeg(isolated_state):
 
     file = Path(json.loads(job["result"])["file"])
     assert file.exists() and file.stat().st_size > 1000
+
+
+def test_metrics_endpoint_aggregates(isolated_state):
+    """/api/metrics must aggregate total / by_status / success_rate from the
+    job store without any external dependency."""
+    from src import app, pipeline
+    from fastapi.testclient import TestClient
+
+    # render one real DNA job (uses ffmpeg if available, else skipped path
+    # still lands in `done` via local fallback in CI — but to keep the test
+    # deterministic we fake a finished job via db directly).
+    from src import db as _db
+    import json
+    import time
+
+    _db.create_job("m1", "a", {"brand_preset": "sushi_dr"})
+    _db.update_job("m1", status="done", result=json.dumps({"shots": 3}))
+    _db.create_job("m2", "b", {"brand_preset": "default"})
+    _db.update_job("m2", status="failed", result=json.dumps({"error": "x"}))
+
+    c = TestClient(app.app)
+    r = c.get("/api/metrics")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 2
+    assert body["by_status"]["done"] == 1
+    assert body["by_status"]["failed"] == 1
+    assert body["success_rate"] == 50.0
+    # at least the brand breakdown reflects the presets we stored
+    assert body["brand_breakdown"].get("sushi_dr") == 1
+    assert body["brand_breakdown"].get("default") == 1

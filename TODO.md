@@ -38,14 +38,14 @@
 ## 6. 可觀測性 / Observability
 - ✅ **`/api/health` 回傳 feature 旗標**：已含。
 - ✅ **結構化日誌**：新增 `config.setup_logging()` + 模組級 `log`，pipeline/tts/renderer/visuals/app 關鍵階段均打 log（含失敗 traceback）。層級可經 `AI_STATION_LOG_LEVEL` 調整。
-- ✅ **CI 不會因 Docker registry 抖動紅燈**：buildx + build 步驟設 `continue-on-error`，pytest 綠燈即整體綠燈（build-only，無 Docker Hub push）。
+- ✅ **可視化指標 (Observability 實作)**：新增 `src/metrics.py` 聚合模組 + `GET /api/metrics` 端點（總作業數、各狀態分布、成功率、平均渲染秒數、品牌分布、近 24h 計數），無外部依賴；web UI 加「③ 生產線指標」卡片（每 5s 刷新）。新增 `test_metrics_endpoint_aggregates` 回歸。
 - ✅ **失敗 video_url 為 None 時處理**：webhook 回傳新增 `ok` 旗標（`status==done` 且有 `video_url` 才 True），`video_url=None` 時 `ok=False` 且 `error` 回填；n8n 呼叫方可直接 `if (body.ok)` 分支，不再依賴 None 判斷。新增 `test_webhook_ok_flag_reflects_video` 回歸。
 
 ## 7. 測試 / Testing
-- ✅ **pytest 28 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook**（CI 綠燈）。
+- ✅ **pytest 29 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook/metrics**（CI 綠燈）。
 - ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
 - ✅ **測試不污染真實狀態**：render 類測試加 `isolated_state` fixture，把 `jobs.db` + `STORAGE_DIR` 導向 tmp（不再寫入 repo 根目錄）。
 - ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback / submit 失敗 單元測試已加**。
 
 ---
-下一步建議優先序：⑤ Docker Hub 自動推映像（待你貼 `DOCKERHUB_USERNAME`+`DOCKERHUB_TOKEN`）/ 真 Runway 實測（需密鑰）→ ⑥ 可視化 dash 或指標（可選增強）。其餘 ①/②/③ 已修。
+下一步建議優先序：⑤ Docker Hub 自動推映像（待你貼 `DOCKERHUB_USERNAME`+`DOCKERHUB_TOKEN`）/ 真 Runway 實測（需密鑰）。其餘 ①②③④⑥⑦ 已修。
