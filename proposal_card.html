@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Station × 壽司博士 — 正式提案卡</title>
+<style>
+  :root{
+    --deep-blue:#10243f; --warm-gold:#c9a24b; --rice:#f3ede1;
+    --green:#3c6e47; --cold:#0a1626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Noto Sans CJK TC","Microsoft JhengHei",system-ui,sans-serif;
+    background:#0a1626; color:var(--rice); line-height:1.6; padding:32px;
+  }
+  .card{
+    max-width:820px; margin:0 auto;
+    background:linear-gradient(135deg,var(--deep-blue),#16314f);
+    border:1px solid rgba(201,162,75,.35);
+    border-radius:18px; overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);
+  }
+  .head{
+    padding:30px 36px; background:linear-gradient(90deg,var(--deep-blue),#1c3354);
+    border-bottom:2px solid var(--warm-gold);
+  }
+  .head .kicker{color:var(--warm-gold);font-size:13px;letter-spacing:3px;text-transform:uppercase}
+  .head h1{font-size:27px;margin-top:6px;color:#fff}
+  .head .sub{margin-top:8px;color:#cdd6e0;font-size:14px}
+  .body{padding:28px 36px}
+  .lead{
+    background:rgba(201,162,75,.10); border-left:4px solid var(--warm-gold);
+    padding:14px 18px; border-radius:8px; margin-bottom:22px; font-size:15px;
+  }
+  h2{color:var(--warm-gold);font-size:16px;margin:22px 0 10px;letter-spacing:1px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;margin-bottom:8px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid rgba(243,237,225,.12)}
+  th{color:var(--warm-gold);font-weight:600}
+  .pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px}
+  .p0{background:var(--warm-gold);color:#1a1206;font-weight:700}
+  .p1{background:#2a4a6e;color:#cfe0f5}
+  .p2{background:#3a3a3a;color:#d8d8d8}
+  .ok{color:var(--green);font-weight:700}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .box{background:rgba(243,237,225,.05);border:1px solid rgba(243,237,225,.12);border-radius:10px;padding:14px}
+  .box h3{color:#fff;font-size:14px;margin-bottom:6px}
+  .box p{font-size:12.5px;color:#cdd6e0}
+  .palette{display:flex;gap:8px;margin:10px 0}
+  .sw{width:46px;height:46px;border-radius:8px;display:flex;align-items:flex-end;justify-content:center;font-size:9px;color:#000;padding-bottom:3px}
+  .foot{padding:18px 36px;border-top:1px solid rgba(201,162,75,.25);font-size:12px;color:#9fb0c2}
+  .cta{margin-top:8px;font-size:14px;color:#fff}
+  .cta b{color:var(--warm-gold)}
+  @media(max-width:600px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <div class="kicker">提案卡 v1.0 · 2026-07-26</div>
+      <h1>AI Station × 壽司博士 Dr. Source</h1>
+      <div class="sub">創價未來｜壽司博士 · 主持人 楊坤修博士 / 善向永續 ESG Sunshine</div>
+    </div>
+    <div class="body">
+      <div class="lead">
+        把「寫一段腳本」到「出一支帶品牌開場、逐字字幕、可立即分發的影片」之間的七道工序，
+        壓縮成一條<strong>全自動生產線</strong>——預設零雲端成本，需要更高品質時再插上雲端金鑰。
+      </div>
+
+      <h2>① 品牌預設（已實作於 src/brand.py）</h2>
+      <div class="palette">
+        <div class="sw" style="background:#10243f">深藍</div>
+        <div class="sw" style="background:#c9a24b;color:#1a1206">暖金</div>
+        <div class="sw" style="background:#f3ede1">米白</div>
+        <div class="sw" style="background:#3c6e47">綠</div>
+        <div class="sw" style="background:#0a1626;color:#fff">冷藍</div>
+      </div>
+      <p style="font-size:13px;color:#cdd6e0">
+        深藍→暖金自動開場 slate · 腳本 DNA（場景/衝突/洞察/方法/反思）一拍一鏡並映射專屬漸層 ·
+        AI 邊界憲法強制（思想與責任來自人）· 禁用藍紫霓虹/機器人大腦等 AI 視覺 ·
+        10 條產品線 + 6 首季母題（含主持人原創判斷）。
+      </p>
+
+      <h2>② 七模組生產線</h2>
+      <table>
+        <tr><th>#</th><th>工序</th><th>預設（免費）</th><th>雲端增強</th></tr>
+        <tr><td>1</td><td>編排中心</td><td>FastAPI + 背景池</td><td>—</td></tr>
+        <tr><td>2</td><td>文字解析</td><td>內建 + DNA 標記</td><td>OpenAI</td></tr>
+        <tr><td>3</td><td>語音</td><td>edge-tts</td><td>ElevenLabs</td></tr>
+        <tr><td>4</td><td>視覺</td><td>Pillow 漸層</td><td>Runway</td></tr>
+        <tr><td>5</td><td>渲染</td><td>ffmpeg + 同步字幕</td><td>—</td></tr>
+        <tr><td>6</td><td>儲存</td><td>本地</td><td>S3</td></tr>
+        <tr><td>7</td><td>溯源</td><td>SQLite + 指標</td><td>NoCodeBackend</td></tr>
+      </table>
+
+      <h2>③ 提案項目與優先序</h2>
+      <table>
+        <tr><th>優先</th><th>項目</th><th>阻礙</th></tr>
+        <tr><td><span class="pill p0">P0</span></td><td>試營運 3 支 DNA 樣片（人工審品牌一致性）</td><td class="ok">無</td></tr>
+        <tr><td><span class="pill p0">P0</span></td><td>VPS 部署 + 網域（compose + nginx + HTTPS）</td><td>需 VPS/網域</td></tr>
+        <tr><td><span class="pill p1">P1</span></td><td>n8n 排程上線（週更切片 + 雙週長片）</td><td class="ok">無</td></tr>
+        <tr><td><span class="pill p1">P1</span></td><td>ElevenLabs 語音升級</td><td>金鑰</td></tr>
+        <tr><td><span class="pill p2">P2</span></td><td>Runway B-roll 實測</td><td>金鑰</td></tr>
+        <tr><td><span class="pill p2">P2</span></td><td>S3 發布 + 指標盤</td><td>金鑰</td></tr>
+      </table>
+
+      <h2>④ 部署狀態</h2>
+      <div class="grid">
+        <div class="box"><h3>程式碼</h3><p>GitHub DingJun1028/aistation · CI 全綠</p></div>
+        <div class="box"><h3>容器映像</h3><p>docker.io/dingjunhong1028/aistation:latest ✅ 已推送</p></div>
+        <div class="box"><h3>測試</h3><p>28 passed（含真 ffmpeg E2E / webhook 認證 / 路徑防護）</p></div>
+        <div class="box"><h3>本機 / Docker 運行</h3><p>ai-station → :8000 / docker run -p 8000:8000</p></div>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="cta">下一步：先用 <b>P0 試營運 3 支樣片</b>確認品牌調性，再推上 VPS 對外。</div>
+      本卡對應 README.md（技術詳述）與 PROPOSAL.md（完整提案）。AI 提高品質，不稀釋真實性。
+    </div>
+  </div>
+</body>
+</html>

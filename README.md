@@ -1,214 +1,187 @@
-# AI Station · 全自動影音生產線
+# AI Station — 全自動影音生產線
 
-一個把「腳本」自動變成「YouTube 影片」的控制中心 (control center)，對應
-`IDEA.md` 中規劃的七大模組。預設**零 API Key** 即可全自動運作（使用 Microsoft
-edge-tts + ffmpeg + Pillow 本地免費引擎），雲端服務（OpenAI / ElevenLabs /
-Runway / S3 / NCBDB）全部以「可插拔設定」形式接上，填了 key 就自動啟用。
+> 把一段腳本，變成一支帶字幕、帶品牌開場、可立即分發的影片。
+> 預設 **零雲端成本**（edge-tts + ffmpeg + Pillow），需要更高品質時再接雲端金鑰。
 
-## 對應 IDEA.md 模組
+AI Station 是一套以 FastAPI 為控制核心的影音生產管線，把「寫腳本」到「出片」之間的
+解析、語音、畫面、剪輯、字幕、發布、可觀測性，全部自動化。它為
+**創價未來｜壽司博士 Dr. Source**（主持人 楊坤修博士 / 善向永續 ESG Sunshine）內建了
+品牌預設，也能透過 n8n webhook 接進任何排程或自動化流程。
 
-| # | 模組 | 免費預設 | 雲端啟用 (設 env) |
-|---|------|----------|-------------------|
-| 1 | 流程中樞 Orchestration | 內建 FastAPI + 管線引擎 | 可接 n8n Webhook |
-| 2 | 文本解析 LLM Brain | 規則式分句解析器 | `OPENAI_API_KEY` |
-| 3 | 語音引擎 TTS | edge-tts (多語言) | `ELEVENLABS_API_KEY` |
-| 4 | 視覺生成 Visuals | Pillow 漸層 + Ken-Burns | `RUNWAY_API_KEY` |
-| 5 | 渲染引擎 Rendering | ffmpeg (headless) | — |
-| 6 | 雲端存儲 Storage | 本機 `./storage` | `AWS_*` |
-| 7 | 溯源日誌 Database | 本地 SQLite | `NCBDB_BASE_URL` |
+---
 
-## 快速開始
+## 1. 它能做什麼
 
-```bash
-# 1. 建立虛擬環境並安裝依賴
-python -m venv .venv
-source .venv/Scripts/activate        # Windows
-pip install -r requirements.txt
+- **腳本 → 鏡頭**：內建解析器把每句話切成一個鏡頭；若貼上品牌 DNA 標記
+  （`【場景】【衝突】【洞察】【方法】【反思】`），自動產生一拍一鏡的 on-brand 結構。
+- **語音**：預設 edge-tts（免費、多語）；金鑰就緒時可切 ElevenLabs。
+- **畫面**：預設 Pillow 漸層（自動套用品牌色）；金鑰就緒時可接 Runway 生成 B-roll。
+- **剪輯 + 字幕**：ffmpeg 把音檔與畫面合成，字幕以「卡拉OK式」逐字同步燒入。
+- **品牌開場**：自動產生壽司博士深藍→暖金開場 slate。
+- **發布**：本地儲存（預設）+ 選用 S3。
+- **可觀測性**：`/api/metrics` 聚合成功率、平均渲染、品牌分布；Web UI 即時儀表板。
 
-# 2. (選用) 複製 .env.example 為 .env 並填入雲端 key
-cp .env.example .env
+---
 
-# 3. 啟動 AI Station（下列任一方式皆可，皆指向同一入口 src.app:app）
-pip install -e .                      # 註冊 console script
-ai-station                             # 方式 A：console script
-python -m src.app                      # 方式 B：模組執行
-python run.py                          # 方式 C：相容舊啟動檔
-uvicorn src.app:app --host 0.0.0.0 --port 8000   # 方式 D：ASGI（生產/容器）
+## 2. 架構（7 模組，對應 IDEA 規劃書）
 
-# 日誌層級（選用）
-AI_STATION_LOG_LEVEL=DEBUG ai-station
-```
+| # | 模組 | 檔案 | 預設（免費） | 雲端增強 |
+|---|------|------|--------------|----------|
+| 1 | 編排中心 | `src/pipeline.py` / `src/app.py` | FastAPI + 背景執行緒池 | — |
+| 2 | 文字解析（LLM 腦） | `src/parser.py` | 內建句法解析器 | OpenAI GPT-4o |
+| 3 | 語音合成 (TTS) | `src/tts.py` | edge-tts | ElevenLabs |
+| 4 | 視覺生成 | `src/visuals.py` | Pillow 漸層 | Runway |
+| 5 | 渲染引擎 | `src/renderer.py` | ffmpeg + 同步字幕 | — |
+| 6 | 雲端儲存 | `src/storage.py` | 本地 `/storage` | S3 |
+| 7 | 溯源/作業庫 | `src/db.py` | SQLite | NoCodeBackend |
 
-> 日誌：pipeline / TTS / renderer / visuals 關鍵階段皆輸出結構化 log
-> （含失敗 traceback），便於在 VPS / Docker 排錯。
+所有雲端整合都是 **可選**：金鑰留白就走免費路徑，且任一雲端失敗都會優雅回落（fallback）。
 
-打開 http://localhost:8000 ，貼上腳本，點「一鍵生成影片」即可。
+---
 
-## 透過 API 驅動 (供 n8n Webhook 串接)
+## 3. 快速開始
 
 ```bash
-# 提交腳本 -> 同步回傳 job 結果
-curl -X POST http://localhost:8000/api/jobs \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"宇宙簡史","script":"宇宙浩瀚無垠。科學家持續探索。"}'
+# 1. 安裝
+pip install -e .            # 含 edge-tts, fastapi, ffmpeg 由系統提供
+# 或：pip install -e ".[s3]"   # 需要 S3 發布時
 
-# n8n Webhook 入口（同步回傳 job_id / status / video_url）
-curl -X POST http://localhost:8000/webhook/n8n \
-  -H 'Content-Type: application/json' \
-  -d '{"title":"每日快報","script":"今天的新聞。我們用 AI Station 自動生成這支影片。"}'
+# 2. ffmpeg 必須在 PATH（影片合成用）
+ffmpeg -version
 
-# 若部署時設定了 WEBHOOK_SECRET，必須帶金鑰（header 或 query 二擇一）
-curl -X POST http://localhost:8000/webhook/n8n \
-  -H 'Content-Type: application/json' \
-  -H 'X-AI-Station-Key: <your-secret>' \
-  -d '{"title":"每日快報","script":"..."}'
-
-# 查詢作業（API 提交後立即回傳 queued，再輪詢狀態）
-curl http://localhost:8000/api/jobs
-curl http://localhost:8000/api/jobs/<job_id>
+# 3. 啟動
+python -m src.app           # 或 uvicorn src.app:app --port 8000
+# 打開 http://localhost:8000 即可看到 Web UI
 ```
 
-> 安全提示：`/webhook/n8n` 預設開放。若對外暴露，請設定環境變數
-> `WEBHOOK_SECRET`，呼叫方須攜帶 `X-AI-Station-Key` 或 `?key=`，否則回 401。
-> `/storage/*` 已加路徑穿越防護，只服務 STORAGE_DIR 內檔案。
-
-### n8n 排程 / 自動化
-
-`n8n/workflow.json` 是一個可直接匯入的範例流程：
-
-1. **Schedule Trigger** — 每天 09:00 觸發（cron 可改）
-2. **HTTP Request** — POST 到 `…/webhook/n8n`，body 帶 `title` + `script`
-3. **IF** — 依 `status` 分支
-4. **Discord / Slack / Telegram** — 成功傳影片網址，失敗傳錯誤
-
-在 n8n 中：`Workflows → 匯入 from File` 選 `n8n/workflow.json`，把
-`http://<AI_STATION_HOST>:8000` 改成你部署的位置（Docker / VPS）即可。
-AI Station 也可用 Docker 跑在自有 VPS 上，完全對應 IDEA.md「n8n 部署於 VPS」。
-
-## Runway 動態 B-roll (模組 4 雲端啟用)
-
-填入 `RUNWAY_API_KEY` 後，每個鏡頭會改由 Runway 文字生影片產生 AI B-roll
-片段（不再是靜態漸層圖）。未填則自動回落免費漸層背景。B-roll 模式會走
-`visuals.generate_broll()`（非同步輪詢 Runway task），失敗同樣回落漸層。
-> 註：Runway API 端點/輪詢格式依其現行版本調整；本專案提供 best-effort 接線。
-
-## Docker Hub 自動發佈 (CI)
-
-CI（`.github/workflows/build.yml`）在 push/PR 時建置映像：
-- 未設 Docker Hub secrets → 只 build + load 驗證映像可建。
-- 設了 `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`（repo **Settings → Secrets**）→
-  自動 `docker push <user>/aistation:latest`。
+用 Docker：
 
 ```bash
-# 在你自己的機器上跑（有正常 Docker 引擎）：
-docker build -t <user>/aistation:latest .
-docker push <user>/aistation:latest
+docker build -t ai-station .
+docker run -p 8000:8000 ai-station
 ```
 
-## 目錄結構
+---
 
+## 4. 使用方式
+
+### Web UI
+開啟 `http://localhost:8000`：貼腳本 → 一鍵生成 → 即時看進度與成片，下方有生產線指標卡。
+
+### REST API
+
+| 方法 | 路徑 | 說明 |
+|------|------|------|
+| GET | `/api/health` | 健康檢查 + feature 旗標 |
+| GET | `/api/metrics` | 生產線指標（總數/成功率/平均渲染/品牌分布） |
+| POST | `/api/jobs` | 提交作業，立即回傳 `queued` + `job_id` |
+| GET | `/api/jobs` | 作業列表 |
+| GET | `/api/jobs/{id}` | 單一作業狀態 |
+| GET | `/api/jobs/{id}/video` | 成片檔（status=done 才有效） |
+| GET | `/api/series` | 壽司博士欄目 + 母題 |
+| GET | `/api/brand` | 品牌預設 |
+| POST | `/webhook/n8n` | n8n webhook（同步回傳結果，含 `ok` 旗標） |
+
+### n8n webhook 範例
+n8n 用 HTTP Request 節點 POST 到 `/webhook/n8n`，body `{ "title", "script", "brand_preset": "sushi_dr" }`，
+回傳 `{ "job_id", "status", "ok", "video_url", "shots", "error" }`。`ok=true` 表示成功出片。
+
+### 品牌 DNA 腳本範例
 ```
-aistation/
-├── run.py              # 啟動入口
-├── requirements.txt
-├── Dockerfile          # 含 ffmpeg 的映像
-├── docker-compose.yml
-├── .env.example        # 所有可選雲端設定
-├── n8n/workflow.json   # n8n 排程/Webhook 範例流程
-├── .github/workflows/build.yml   # 建置 / 推 Docker Hub
-├── src/
-│   ├── app.py          # FastAPI 控制中心 (含 /webhook/n8n)
-│   ├── config.py       # 設定 + 可插拔功能旗標
-│   ├── db.py           # 模組 7：作業/溯源日誌 (SQLite / NCBDB)
-│   ├── parser.py       # 模組 2：腳本 -> 鏡頭 (免費 / OpenAI)
-│   ├── tts.py          # 模組 3：語音合成 (edge-tts / ElevenLabs) + 逐字時間戳
-│   ├── visuals.py      # 模組 4：漸層 / Runway B-roll
-│   ├── renderer.py      # 模組 5：ffmpeg 組裝 + Ken-Burns + 同步字幕
-│   ├── storage.py      # 模組 6：發布 (本機 / S3)
-│   └── pipeline.py     # 模組 1：管線編排中樞
-├── web/index.html      # 控制中心的儀表板 UI
-└── examples/sample_script.txt
-```
-
-## 總作業流程圖
-
-![AI Station 總作業流程圖](diagrams/workflow.excalidraw)
-
-互動版（可編輯）：https://excalidraw.com/#json=IzMNS_pLld_LW0NAaDuol,vqiuPpDPBiXv1u7bm6MwLg
-
-涵蓋：Web 控制台 / n8n Webhook / REST API 三個入口 → 模組1 中樞 → 模組2~7
-（解析→語音→視覺→渲染→發布→溯源），每個雲端模組（ElevenLabs / Runway /
-S3 / NCBDB）以虛線標註「設 key 啟用」→ 輸出 MP4 → Docker / CI / n8n 部署層。
-
-### 壽司博士 Dr. Source 品牌預設（sushi_dr）
-
-專案內建《創價未來｜壽司博士 Dr. Source AI 協作視頻頻道規劃書 v1.0》的品牌預設，
-讓管線直接產出符合頻道憲法的影片：深藍/暖金/米白/綠 配色、片頭標板、以及
-「場景→衝突→洞察→方法→反思」的腳本 DNA。
-
-用 DNA 標記寫腳本，解析器會「一標記一鏡位」自動套用對應品牌配色：
-
-```
-【場景】一家公司花了一年寫完永續報告，老闆只看了十分鐘。
-【衝突】報告完成了，公司卻沒有改變。
-【洞察】因為 ESG 被當成交付物，而不是經營系統。
-【方法】用 1.0、1.5、2.0 檢查公司目前的位置。
-【反思】如果永續只讓報告更漂亮，卻沒減少任何人的苦，算永續嗎？
+【場景】城市不是替人民設計。
+【衝突】市民的需求常被專家最佳化取代。
+【洞察】公共價值來自共創。
+【方法】用三個共創問題啟動參與。
+【反思】你上一次被詢問，是什麼時候？
 ```
 
-呼叫時帶 `brand_preset`：
+---
+
+## 5. 設定（`.env`）
+
+複製 `.env.example` 為 `.env`。所有金鑰**選填**——留白即走免費路徑。
+
+| 變數 | 用途 | 預設 |
+|------|------|------|
+| `WEBHOOK_SECRET` | webhook 認證（常數時間比對） | 空白=開放 |
+| `OPENAI_API_KEY` | 啟用 GPT-4o 鏡頭規劃 | 空白=內建解析器 |
+| `ELEVENLABS_API_KEY` | 啟用 ElevenLabs 語音 | 空白=edge-tts |
+| `RUNWAY_API_KEY` | 啟用 Runway B-roll | 空白=Pillow 漸層 |
+| `AWS_*` | S3 發布（需 `[s3]` extra） | 空白=本地 |
+| `NCBDB_*` | NoCodeBackend 溯源鏡像 | 空白=僅本地 SQLite |
+| `VIDEO_WIDTH/HEIGHT/FPS` | 輸出解析度 | 1280×720×30 |
+
+---
+
+## 6. 安全與可靠性
+
+- **Webhook 認證**：`WEBHOOK_SECRET` 啟用後，以 `X-AI-Station-Key` header 或 `?key=` 校驗，
+  使用 `hmac.compare_digest` 常數時間比對，避免時序側信道。
+- **路徑穿越防護**：`/storage/{path}` 與 `/video` 皆 resolve 後確認在 `STORAGE_DIR` 內。
+- **背景作業不卡死**：渲染失敗會寫入 `failed` + 紀錄錯誤，不會永遠卡在 `queued`。
+- **雲端優雅回落**：Runway / OpenAI 失敗自動回到免費路徑，不中斷生產。
+
+---
+
+## 7. 開發與測試
 
 ```bash
-curl -X POST localhost:8000/api/jobs \
-  -H 'content-type: application/json' \
-  -d '{"script":"...上述 DNA 腳本...","brand_preset":"sushi_dr"}'
+pip install -e ".[dev]"
+pytest                       # 28 測試（config/parser/tts/renderer/db/api/security/
+                             #        integration/runway/openai/webhook/metrics）
 ```
 
-- `GET /api/brand`：回傳品牌設定（名稱/標語/配色/憲法/AI 邊界）。
-- `GET /api/series`：回傳十條系列產品線 + 六個首季母題（含壽司博士原創判斷）。
-- n8n webhook 亦接受 `brand_preset` 欄位。
-- 未標記的腳本退回一般免費解析器；設 `OPENAI_API_KEY` 則改走 GPT-4o 解析。
+- `test_integration_render_runs_ffmpeg` 跑真 ffmpeg；無 ffmpeg 時自動 skip。
+- 渲染類測試用 `isolated_state` fixture，把 `jobs.db` 與 `storage/` 導向暫存目錄，不污染 repo。
+- 目前 **28 測試全綠**（CI 含 ffmpeg + Noto CJK 字體）。
 
-## 容器化部署 (Docker)
+---
 
-![AI Station 時序圖](diagrams/sequence.excalidraw)
+## 8. 可觀測性
 
-互動版：https://excalidraw.com/#json=m3ON1UO6ogF4MHzxNSEIZ,iTNL61SSEk5SgBnEp7V-nA
+`GET /api/metrics` 回傳：
 
-說明：用戶或 n8n 經 Webhook 觸發 → Pipeline 中樞依序呼叫 模組群
-（解析 / 語音 / 視覺 / 渲染）產出 clips → Storage 存檔、DB 記溯源 → 回傳影片網址。
-
-## 容器化部署 (Docker)
-
-```bash
-# 建立映像（ffmpeg 已內建於映像中，渲染引擎需要它）
-docker build -t aistation:latest .
-
-# 啟動（掛載 ./storage 以持久化影片與 SQLite）
-docker run -d --name aistation -p 8000:8000 -v ./storage:/app/storage aistation:latest
-
-# 或一次到位（docker compose）
-docker compose up -d
+```json
+{
+  "total": 12,
+  "by_status": {"done": 10, "failed": 1, "rendering": 1},
+  "success_rate": 90.9,
+  "avg_render_seconds": 18.3,
+  "top_brands": [{"brand": "sushi_dr", "count": 9}, {"brand": "default", "count": 3}],
+  "last_24h_count": 5,
+  "brand_breakdown": {"sushi_dr": 9, "default": 3}
+}
 ```
 
-> 所有雲端設定（OpenAI / ElevenLabs / Runway / S3 / NCBDB）可在
-> `docker-compose.yml` 的 `environment:` 區塊填入，或直接掛載 `.env`。
-> 不填則維持免費本地引擎。
+Web UI 的「③ 生產線指標」卡片每 5 秒刷新這些數字。
 
-> 驗證狀態：
-> - 應用程式（FastAPI + ffmpeg 管線）已透過本地 venv 端對端驗證可產出 MP4。
-> - Docker 映像已透過 GitHub Actions（`.github/workflows/build.yml`）在 Ubuntu
->   runner 上**實際建置成功**（`docker build` 已通過 CI，run 30155502256）。
->   本機 Docker Desktop daemon 因 WSL2/Hyper-V 後端問題無法啟動，故本地
->   `docker build` 改由 CI 代為驗證；有正常 Docker 引擎的機器可直接 `docker build`。
+---
 
-## 運作流程 (一次生成)
+## 9. 文件結構
 
-1. **解析** 腳本切成 N 個鏡頭（每鏡頭含 旁白 / 畫面提示詞 / 字幕）。
-2. **語音** 每個鏡頭用 TTS 產生 MP3。
-3. **畫面** 每個鏡頭用 Pillow 產生漸層背景圖。
-4. **渲染** ffmpeg 對每張背景做 Ken-Burns 縮放平移，配對語音長度，串接成片。
-5. **發布** 輸出 MP4 到 `./storage`，回傳可播放網址。
-6. **溯源** 每個階段狀態寫入 SQLite（或 NCBDB）。
+```
+src/
+  app.py        控制核心（FastAPI 路由）
+  pipeline.py   編排（背景執行緒池、job 生命週期）
+  parser.py     文字解析（內建 / OpenAI / DNA）
+  tts.py        語音合成
+  visuals.py    視覺生成（漸層 / Runway）
+  renderer.py   ffmpeg 渲染 + 同步字幕
+  storage.py    本地 / S3 發布
+  db.py         SQLite 作業庫 + 溯源鏡像
+  metrics.py    指標聚合
+  brand.py      壽司博士品牌預設
+  config.py     設定 + feature 旗標
+web/index.html  Web UI（提交 / 監控 / 指標）
+tests/         pytest 套件
+```
 
-> 全程 headless、本地免費算力即可完成，完全符合 IDEA.md「筆電只負責規劃與監控」的架構。
+---
+
+## 10. 路線圖
+
+- [x] 7 支柱 MECE 最佳實踐（正確性/安全/可維護/效能/擴充/可觀測/測試）
+- [x] 背景作業失敗標記、webhook 常數時間比對、S3 超時防僵
+- [x] 按 `shot.index` 顯式排序防禦、webhook `ok` 旗標、metrics 儀表板
+- [x] Docker Hub 自動推映像（`DOCKERHUB_*` Secrets → CI 建置並推送 `docker.io/dingjunhong1028/aistation:latest`）
+- [ ] 真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）
