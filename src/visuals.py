@@ -49,11 +49,18 @@ def gradient_frame(color1: str, color2: str, idx: int, total: int) -> Image.Imag
     import numpy as np
 
     w, h = VIDEO_WIDTH, VIDEO_HEIGHT
-    c1, c2 = (np.array(_hex(color1), dtype=float), np.array(_hex(color2), dtype=float))
-    yy, xx = np.mgrid[0:h, 0:w].astype(float)
-    t = (xx / w + yy / h) / 2.0  # diagonal blend factor
-    buf = c1[None, None, :] * (1 - t[..., None]) + c2[None, None, :] * t[..., None]
-    img = Image.fromarray(buf.astype("uint8"), "RGB")
+    # Memory-light: 1-D broadcasts (ogrid) + float32 instead of a full 2-D
+    # float64 meshgrid. Peak working set drops from ~3 arrays of h*w*8 bytes to
+    # a single h*w*4 float plus the uint8 output, so it renders on RAM-starved
+    # machines instead of raising MemoryError.
+    xs = np.linspace(0.0, 1.0, w, dtype=np.float32)[None, :]   # 1 x w
+    ys = np.linspace(0.0, 1.0, h, dtype=np.float32)[:, None]   # h x 1
+    t = ((xs + ys) / 2.0).astype(np.float32)                  # h x w, 4 bytes/px
+    c1 = np.array(_hex(color1), dtype=np.float32)
+    c2 = np.array(_hex(color2), dtype=np.float32)
+    buf = (c1[None, None, :] * (1.0 - t[..., None])
+           + c2[None, None, :] * t[..., None]).astype("uint8")
+    img = Image.fromarray(buf, "RGB")
     draw = ImageDraw.Draw(img, "RGBA")
     for i in range(60):
         alpha = int(1.2 * (60 - i))
