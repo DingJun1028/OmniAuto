@@ -185,3 +185,38 @@ tests/         pytest 套件
 - [x] 按 `shot.index` 顯式排序防禦、webhook `ok` 旗標、metrics 儀表板
 - [x] Docker Hub 自動推映像（`DOCKERHUB_*` Secrets → CI 建置並推送 `docker.io/dingjunhong1028/aistation:latest`）
 - [ ] 真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）
+
+---
+
+## 11. 部署到 VPS（esggo 場域）
+
+容器映像已推送：**`docker.io/dingjunhong1028/aistation:latest`**。
+`deploy/` 目錄提供可複用的生產堆疊（已驗證語法）：
+
+```
+deploy/
+  docker-compose.yml              # pull 映像，:8000 僅綁 localhost，volume 掛 ./storage，含 healthcheck
+  nginx/aistation.esggo.co.conf   # 反向代理 + X-Forwarded-*（HTTP 區塊；HTTPS 區塊註解待 certbot）
+  deploy.sh USER@HOST [DOMAIN]    # rsync + compose up -d + 裝 nginx site + 健康檢查
+  .env.example                    # 伺服器端環境變數範本（複製為 .env，勿進版控）
+```
+
+**本機一鍵部署**（需本機能 SSH 進 VPS，且 VPS 已裝 docker/compose + nginx）：
+
+```bash
+# 1) 在 VPS 上：把本機公鑰加入 authorized_keys（只需一次）
+#    cat ~/.ssh/id_rsa_esggo.pub | ssh USER@HOST 'cat >> ~/.ssh/authorized_keys'
+
+# 2) 在 VPS 上建立伺服器端 .env（金鑰選填，勿進 git）
+#    rsync -a deploy/.env.example USER@HOST:~/aistation/deploy/.env   # 再補填金鑰
+
+# 3) 本機執行部署
+./deploy/deploy.sh USER@HOST aistation.esggo.co
+
+# 4) DNS：aistation.esggo.co A/AAAA -> VPS IP；HTTPS：sudo certbot --nginx -d aistation.esggo.co
+```
+
+**不登入 VPS 的做法**：把 `deploy/` 整包交給有權限的人，於 VPS 上
+`docker compose pull && docker compose up -d`，再把 `nginx/...conf` 啟用即可。
+
+所有雲端金鑰選填；留白即走免費路徑（edge-tts + ffmpeg + Pillow）。
