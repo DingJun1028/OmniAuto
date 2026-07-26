@@ -14,8 +14,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from . import db
+from . import config
 from . import renderer, storage, tts, visuals
-from .config import STORAGE_DIR, log
+from .config import log
 from .parser import parse_script, Shot
 
 
@@ -25,12 +26,15 @@ _pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="aistation")
 
 @atexit.register
 def _shutdown_pool():
-    """Release worker threads on process exit (clean reloads / test runs)."""
-    _pool.shutdown(wait=False, cancel_futures=True)
+    """Release worker threads on process exit. We do NOT cancel in-flight
+    futures (cancel_futures=False) so a render that is still running at
+    interpreter shutdown is allowed to finish rather than being killed
+    mid-render (which would otherwise orphan the job in `rendering`)."""
+    _pool.shutdown(wait=False, cancel_futures=False)
 
 
 def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None = None) -> str:
-    work = STORAGE_DIR / job_id
+    work = config.STORAGE_DIR / job_id
     work.mkdir(parents=True, exist_ok=True)
     log.info("job=%s start title=%r brand=%s", job_id, title, brand_preset)
 

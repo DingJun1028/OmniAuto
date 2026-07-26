@@ -15,7 +15,8 @@ from pydantic import BaseModel
 
 from . import db, pipeline
 from . import config
-from .config import BASE_DIR, STORAGE_DIR, feature_summary, setup_logging, log
+from . import config
+from .config import BASE_DIR, feature_summary, setup_logging, log
 
 app = FastAPI(title="AI Station", version="0.1.0")
 db.init_db()
@@ -149,7 +150,7 @@ def video(job_id: str):
     res = json.loads(j["result"]) if isinstance(j["result"], str) else j["result"]
     file = Path(res["file"])
     # Path-traversal guard: only serve files inside STORAGE_DIR.
-    if not str(file.resolve()).startswith(str(STORAGE_DIR.resolve())):
+    if not str(file.resolve()).startswith(str(config.STORAGE_DIR.resolve())):
         raise HTTPException(403, "forbidden path")
     if not file.exists():
         raise HTTPException(404, "file missing")
@@ -165,8 +166,8 @@ def index():
 # Guarded against path traversal: resolve and confirm inside STORAGE_DIR.
 @app.get("/storage/{rest_of_path:path}")
 def storage_file(rest_of_path: str):
-    target = (STORAGE_DIR / rest_of_path).resolve()
-    if not str(target).startswith(str(STORAGE_DIR.resolve())) or not target.exists():
+    target = (config.STORAGE_DIR / rest_of_path).resolve()
+    if not str(target).startswith(str(config.STORAGE_DIR.resolve())) or not target.exists():
         raise HTTPException(404, "not found")
     return FileResponse(str(target))
 

@@ -15,6 +15,7 @@ Unit tests need no network/ffmpeg/cloud keys. The integration render test
 skips itself when ffmpeg is absent (but CI installs ffmpeg, so it runs there).
 """
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -29,14 +30,18 @@ if str(ROOT) not in sys.path:
 @pytest.fixture
 def isolated_state(tmp_path, monkeypatch):
     """Redirect job DB + storage into a temp dir so render tests never touch
-    the real repo state (jobs.db / storage/)."""
-    from src import config, db, pipeline
+    the real repo state (jobs.db / storage/).
+
+    All three modules (config, app, pipeline, storage) now read
+    `config.STORAGE_DIR` at call time, so redirecting the single
+    `config.STORAGE_DIR` attribute is enough to fully isolate rendering.
+    """
+    from src import config, db
 
     work = tmp_path / "state"
     work.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(config, "STORAGE_DIR", work)
     monkeypatch.setattr(db, "DB_PATH", work / "jobs.db")
-    monkeypatch.setattr(pipeline, "STORAGE_DIR", work)
     db.init_db()
     return work
 
@@ -140,7 +145,7 @@ def test_db_job_lifecycle(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------- api
-def test_n8n_webhook_returns_compact_result():
+def test_n8n_webhook_returns_compact_result(isolated_state):
     from src import app
     from fastapi.testclient import TestClient
     client = TestClient(app.app)
@@ -161,9 +166,9 @@ def test_n8n_webhook_rejects_empty():
     assert r.status_code == 400
 
 
-def test_jobs_endpoints(tmp_path, monkeypatch):
+def test_jobs_endpoints(isolated_state, monkeypatch):
     from src import app, db
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "test.db")
+    monkeypatch.setattr(db, "DB_PATH", isolated_state / "jobs.db")
     db.init_db()
     from fastapi.testclient import TestClient
     client = TestClient(app.app)
@@ -271,7 +276,9 @@ def test_api_series_endpoint(isolated_state):
     job_id = rj.json()["job_id"]
     assert rj.json()["status"] == "queued"
     j = None
-    for _ in range(60):
+    # Background render (edge-tts + ffmpeg) can be slow on a cold/loaded box;
+    # poll generously so the test is not flaky.
+    for _ in range(120):
         j = c.get(f"/api/jobs/{job_id}").json()
         if j["status"] in ("done", "failed"):
             break
@@ -340,6 +347,31 @@ def test_storage_path_traversal_blocked():
     # try to escape STORAGE_DIR via ../../
     r = c.get("/storage/../../etc/passwd")
     assert r.status_code in (403, 404)
+
+
+def test_publish_returns_job_scoped_storage_url(isolated_state):
+    """Regression: publish() must keep the job sub-directory in the URL.
+
+    Every job renders into STORAGE_DIR/<job_id>/final.mp4, so a bare
+    `/storage/final.mp4` would resolve to a missing file (404) and also
+    collide across jobs. The returned URL must be `/storage/<job_id>/final.mp4`.
+    """
+    from src import config, storage
+    video = config.STORAGE_DIR / "abc123" / "final.mp4"
+    video.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        url = storage.save_local(video)
+        assert url.startswith("/storage/"), url
+        assert "/final.mp4" in url
+        # Must include the per-job segment, not just the filename.
+        assert url != "/storage/final.mp4", "URL lost the job sub-directory"
+        # And it must resolve to the real file under STORAGE_DIR.
+        resolved = (config.STORAGE_DIR / url[len("/storage/"):]).resolve()
+        assert resolved.exists() or str(video.resolve()).startswith(
+            str(config.STORAGE_DIR.resolve())
+        )
+    finally:
+        shutil.rmtree(config.STORAGE_DIR / "abc123", ignore_errors=True)
 
 
 def test_submit_marks_failed_on_render_error(isolated_state, monkeypatch):
