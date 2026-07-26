@@ -59,14 +59,22 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
 
     # 5: render per-shot clips (with synced captions) then concat
     db.update_job(job_id, status="rendering", progress=85)
-    clips = []
+    clip_by_loop: dict[int, Path] = {}
     for i, (m, a) in enumerate(zip(medias, audios)):
         clip = work / f"clip_{i+1}.mp4"
         renderer.render_shot_clip(m, is_videos[i], a, clip, i + 1,
                                   boundaries=all_boundaries[i])
-        clips.append(clip)
+        clip_by_loop[i] = clip
+    # Defense: order the final concat by each shot's `index`, not by loop
+    # position. If a parser ever returns non-monotonic indices (e.g. an
+    # off-by-one in the OpenAI plan), the video still plays in script order.
+    ordered = sorted(range(len(shot_dicts)),
+                     key=lambda i: shot_dicts[i].get("index", i + 1))
+    clips = [clip_by_loop[i] for i in ordered]
+    shot_dicts_ordered = [shot_dicts[i] for i in ordered]
     video = work / "final.mp4"
-    renderer.render_final(clips, video, shot_dicts, brand_preset=brand_preset)
+    renderer.render_final(clips, video, shots=shot_dicts_ordered,
+                          brand_preset=brand_preset)
 
     # 6: publish
     db.update_job(job_id, status="publishing", progress=95)

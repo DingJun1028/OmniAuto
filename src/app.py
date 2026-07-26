@@ -120,11 +120,13 @@ def webhook_n8n(payload: WebhookIn, request: "Request"):
     # same background pool so very long scripts still complete.
     job = pipeline.enqueue(script, payload.title, brand_preset=payload.brand_preset)
     res = json.loads(job["result"]) if job.get("result") else {}
+    video_url = res.get("video_url")
     return {
         "job_id": job["job_id"],
         "status": job["status"],
+        "ok": job["status"] == "done" and bool(video_url),
         "title": job["title"],
-        "video_url": res.get("video_url"),
+        "video_url": video_url,
         "shots": res.get("shots"),
         "error": res.get("error") if job["status"] == "failed" else None,
     }

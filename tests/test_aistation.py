@@ -300,6 +300,38 @@ def test_webhook_requires_secret_when_configured(monkeypatch, isolated_state):
     assert r.json()["status"] in ("done", "failed")
 
 
+def test_webhook_ok_flag_reflects_video(isolated_state, monkeypatch):
+    """Webhook payload must expose an `ok` flag that is True only when the job
+    finished `done` AND produced a video_url (so callers can branch on None)."""
+    from src import app, pipeline
+    from fastapi.testclient import TestClient
+
+    def _fake_enqueue(script, title, brand_preset=None):
+        return {"job_id": "abc123", "status": "done", "title": title,
+                "result": '{"video_url": "/storage/final.mp4", "shots": 2}'}
+
+    monkeypatch.setattr(pipeline, "enqueue", _fake_enqueue)
+    c = TestClient(app.app)
+    r = c.post("/webhook/n8n", json={"script": "x"})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True
+    assert body["video_url"] == "/storage/final.mp4"
+
+    # Failed job -> ok False, even if (hypothetically) a url were present.
+    monkeypatch.setattr(
+        pipeline, "enqueue",
+        lambda s, t, brand_preset=None: {
+            "job_id": "xyz", "status": "failed", "title": t,
+            "result": '{"error": "boom"}',
+        },
+    )
+    r2 = c.post("/webhook/n8n", json={"script": "x"})
+    assert r2.status_code == 200
+    assert r2.json()["ok"] is False
+    assert r2.json()["video_url"] is None
+
+
 def test_storage_path_traversal_blocked():
     from src import app
     from fastapi.testclient import TestClient

@@ -163,6 +163,12 @@ def render_final(shot_clips: list[Path], video_out: Path,
                  shots: list[dict], brand_preset: str | None = None) -> Path:
     if not shot_clips:
         raise RuntimeError("No shots rendered.")
+    # `shots` is informational but also a guard: the caller passes the
+    # post-ordering shot dicts, so a mismatch against the clip list signals a
+    # pipeline bug rather than silently producing a wrong-length video.
+    if shots is not None and len(shots) and len(shots) != len(shot_clips):
+        log.warning("render_final: %d shot dicts vs %d clips — concat uses the "
+                    "clips as given", len(shots), len(shot_clips))
     video_out = Path(video_out)
     inputs = []
     for c in shot_clips:
