@@ -1,0 +1,53 @@
+name: Enable HTTPS (certbot) on VPS
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "FQDN to issue the Let's Encrypt cert for"
+        required: false
+        default: "aistation.esggo.co"
+
+permissions:
+  contents: read
+
+jobs:
+  https:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Issue cert + switch nginx to HTTPS
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          DOMAIN: ${{ github.event.inputs.domain || 'aistation.esggo.co' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$USER@$HOST" bash -c "'
+            set -e
+            sudo apt-get update && sudo apt-get install -y certbot python3-certbot-nginx
+            # The deploy nginx conf already has the HTTPS server block commented out;
+            # certbot --nginx auto-fills it and redirects 80 -> 443.
+            sudo certbot --nginx -d \"$DOMAIN\" --non-interactive --agree-tos \
+              --register-unsafely-without-email || {
+                echo \"!! certbot failed. Confirm DNS A -> this VPS IP and Oracle Security List allows 80/443.\"
+                exit 1
+              }
+            sudo nginx -t && sudo systemctl reload nginx
+            echo \">> HTTPS enabled: https://$DOMAIN\"
+          '"
+          # Final external reachability check (from the runner).
+          sleep 4
+          curl -fsS "https://$DOMAIN/api/health" && echo " << external HTTPS OK" \
+            || echo "!! external HTTPS check failed (DNS/security-list still pending?)"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

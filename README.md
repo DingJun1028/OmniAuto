@@ -232,6 +232,7 @@ deploy/
 `DEPLOY_USER` 三個 repo Secrets 驅動。設定好後在 Actions 頁手動 `Run workflow`
 即會 SSH 進 VPS、bootstrap docker/nginx、pull 多架構映像、compose up、啟用
 nginx。同機制另有 `verify.yml`（線上出片端到端驗收）與 `diag.yml`（防火牆/監聽診斷）。
+DNS + 安全群組就緒後，跑 `https.yml` 即自動 `certbot --nginx` 上 HTTPS 並做外部驗收。
 
 ### 上線前必做的兩個控制台動作（非程式碼，需你的雲端權限）
 
