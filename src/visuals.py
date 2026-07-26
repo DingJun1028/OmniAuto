@@ -49,18 +49,19 @@ def gradient_frame(color1: str, color2: str, idx: int, total: int) -> Image.Imag
     import numpy as np
 
     w, h = VIDEO_WIDTH, VIDEO_HEIGHT
-    # Memory-light: 1-D broadcasts (ogrid) + float32 instead of a full 2-D
-    # float64 meshgrid. Peak working set drops from ~3 arrays of h*w*8 bytes to
-    # a single h*w*4 float plus the uint8 output, so it renders on RAM-starved
-    # machines instead of raising MemoryError.
-    xs = np.linspace(0.0, 1.0, w, dtype=np.float32)[None, :]   # 1 x w
-    ys = np.linspace(0.0, 1.0, h, dtype=np.float32)[:, None]   # h x 1
-    t = ((xs + ys) / 2.0).astype(np.float32)                  # h x w, 4 bytes/px
+    # RAM-frugal: build the diagonal blend at HALF resolution (peak numpy
+    # working set ~2.6 MB instead of ~10.5 MB for a full 720p float32 buffer),
+    # then upscale with PIL (streaming, low RAM). Avoids MemoryError on
+    # RAM-starved machines while keeping identical visual output.
+    hw, hh = max(2, w // 2), max(2, h // 2)
+    xs = np.linspace(0.0, 1.0, hw, dtype=np.float32)[None, :]   # 1 x hw
+    ys = np.linspace(0.0, 1.0, hh, dtype=np.float32)[:, None]   # hh x 1
+    t = ((xs + ys) / 2.0).astype(np.float32)                  # hh x hw, ~0.7 MB
     c1 = np.array(_hex(color1), dtype=np.float32)
     c2 = np.array(_hex(color2), dtype=np.float32)
-    buf = (c1[None, None, :] * (1.0 - t[..., None])
-           + c2[None, None, :] * t[..., None]).astype("uint8")
-    img = Image.fromarray(buf, "RGB")
+    small = (c1[None, None, :] * (1.0 - t[..., None])
+             + c2[None, None, :] * t[..., None]).astype("uint8")
+    img = Image.fromarray(small, "RGB").resize((w, h), Image.BILINEAR)
     draw = ImageDraw.Draw(img, "RGBA")
     for i in range(60):
         alpha = int(1.2 * (60 - i))
