@@ -54,7 +54,15 @@ def main() -> int:
             break
 
     final = _get(f"/api/jobs/{job_id}")
-    result = final.get("result") or {}
+    raw_result = final.get("result")
+    # The API stores `result` as a JSON string, not a parsed object.
+    if isinstance(raw_result, str):
+        try:
+            result = json.loads(raw_result)
+        except Exception:
+            result = {}
+    else:
+        result = raw_result or {}
     video_url = result.get("video_url") if isinstance(result, dict) else None
     print("final status:", status)
     print("result:", json.dumps(result, ensure_ascii=False)[:300])
