@@ -29,12 +29,17 @@
   .card h2{margin:0 0 12px;font-size:15px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:1px}
   textarea{width:100%;min-height:200px;background:var(--panel2);color:var(--txt);
     border:1px solid var(--line);border-radius:10px;padding:12px;font-size:14px;resize:vertical}
-  input[type=text]{width:100%;background:var(--panel2);color:var(--txt);
+  input[type=text],select{width:100%;background:var(--panel2);color:var(--txt);
     border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:10px}
+  select{cursor:pointer}
   button{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 18px;
     font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
   button:hover{filter:brightness(1.1)}
   button:disabled{opacity:.5;cursor:not-allowed}
+  button.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+  button.ghost:hover{color:var(--txt);border-color:var(--accent)}
+  button.small{padding:6px 12px;font-size:12px}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .job{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--panel2)}
   .job .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
   .job .title{font-weight:600}
@@ -46,6 +51,7 @@
   .bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:.3s}
   video{width:100%;border-radius:10px;margin-top:8px;background:#000}
   .hint{color:var(--muted);font-size:12px;margin-top:6px}
+  .actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
   .empty{color:var(--muted);font-size:13px;text-align:center;padding:20px}
   .mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px}
   .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -57,6 +63,14 @@
   .brands{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
   .brands .b{background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:4px 10px;font-size:12px;color:var(--muted)}
   .brands .b b{color:var(--accent)}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+    background:var(--accent2);color:#04140e;padding:10px 18px;border-radius:10px;
+    font-size:13px;font-weight:600;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .examples{margin-top:10px}
+  .examples .b{display:inline-block;background:var(--panel2);border:1px solid var(--line);
+    border-radius:20px;padding:4px 10px;font-size:12px;color:var(--muted);cursor:pointer;margin:3px}
+  .examples .b:hover{color:var(--txt);border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -69,9 +83,14 @@
     <div class="card">
       <h2>① 提交腳本 (Script)</h2>
       <input type="text" id="title" placeholder="影片標題 (選填)" />
+      <select id="brand">
+        <option value="">品牌預設：預設（無開場 slate）</option>
+      </select>
       <textarea id="script" placeholder="在此貼上你的腳本。每一句話會自動切成一個鏡頭，並生成語音與畫面。&#10;&#10;例：&#10;宇宙浩瀚無垠，充滿了無數未解之謎。&#10;從黑洞到暗物質，科學家持續探索這片神祕領域。&#10;今天我們就來看看，人類對宇宙的理解到了哪一步。"></textarea>
-      <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+      <div class="examples" id="examples"></div>
+      <div style="margin-top:10px" class="row">
         <button id="go">▶ 一鍵生成影片</button>
+        <button id="dna" class="ghost small">貼上 DNA 範本</button>
         <span class="hint" id="hint">預設使用免費引擎 (edge-tts + ffmpeg + Pillow)</span>
       </div>
     </div>
@@ -85,10 +104,30 @@
     </div>
   </div>
 </main>
+<div class="toast" id="toast"></div>
 
 <script>
 const $ = (s)=>document.querySelector(s);
 let pollTimer = null;
+
+const DNA_TEMPLATE = `【場景】城市不是替人民設計。
+【衝突】市民的需求常被專家最佳化取代。
+【洞察】公共價值來自共創。
+【方法】用三個共創問題啟動參與。
+【反思】你上一次被詢問，是什麼時候？`;
+
+const EXAMPLES = [
+  "宇宙浩瀚無垠，充滿了無數未解之謎。\n從黑洞到暗物質，科學家持續探索這片神祕領域。\n今天我們就來看看，人類對宇宙的理解到了哪一步。",
+  "ESG 報告寫完了，公司真的改變了嗎？\n因為 ESG 被當成一份交付物，而不是經營系統。\n如果永續只讓報告更漂亮，卻沒減少任何人的苦，算永續嗎？",
+  "AI 越來越像人，人類更需要學會什麼？\n未來最珍貴的不是知識，而是承擔、慈悲與判斷。\n當所有人都能用 AI 生產知識，真正珍貴的是原創判斷。"
+];
+
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
 
 async function loadFeat(){
   const r = await fetch('/api/health').then(r=>r.json());
@@ -99,14 +138,40 @@ async function loadFeat(){
   }).join('');
 }
 
+async function loadBrands(){
+  // Populate the brand preset dropdown from the API.
+  try{
+    const data = await fetch('/api/series').then(r=>r.json());
+    const sel = $('#brand');
+    // keep the default empty option, add sushi_dr
+    const opt = document.createElement('option');
+    opt.value = 'sushi_dr';
+    opt.textContent = '品牌預設：壽司博士 Dr. Source (開場 slate)';
+    sel.appendChild(opt);
+    sel.value = 'sushi_dr'; // default to brand
+  }catch(e){ /* non-fatal */ }
+}
+
+function renderExamples(){
+  $('#examples').innerHTML = EXAMPLES.map((ex,i)=>
+    `<span class="b" data-i="${i}">範例 ${i+1}</span>`).join('');
+  $('#examples').querySelectorAll('.b').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      $('#script').value = EXAMPLES[+el.dataset.i];
+      toast('已填入範例腳本');
+    });
+  });
+}
+
 async function submit(){
   const script = $('#script').value.trim();
   if(!script){ alert('請先貼上腳本'); return; }
   $('#go').disabled = true;
   const title = $('#title').value.trim() || 'Untitled';
+  const brand_preset = $('#brand').value || null;
   const r = await fetch('/api/jobs',{
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({title, script})
+    body: JSON.stringify({title, script, brand_preset})
   }).then(r=>r.json());
   $('#go').disabled = false;
   startPolling();
@@ -126,8 +191,13 @@ async function refresh(){
     let extra = '';
     if(st==='done'){
       const res = JSON.parse(j.result||'{}');
+      const url = res.video_url || `/api/jobs/${j.job_id}/video`;
       extra = `<video src="/api/jobs/${j.job_id}/video" controls></video>
-        <div class="hint">輸出：${res.shots} 個鏡頭 · 引擎：免費本地渲染</div>`;
+        <div class="hint">輸出：${res.shots} 個鏡頭 · 引擎：免費本地渲染</div>
+        <div class="actions">
+          <a href="${url}" download><button class="ghost small">⬇ 下載</button></a>
+          <button class="ghost small" data-copy="${url}">🔗 複製連結</button>
+        </div>`;
     } else if(st==='failed'){
       const res = JSON.parse(j.result||'{}');
       extra = `<div class="hint" style="color:var(--bad)">錯誤：${res.error||'unknown'}</div>`;
@@ -135,10 +205,26 @@ async function refresh(){
     return `<div class="job">
       <div class="top"><span class="title">${j.title}</span>
         <span class="badge ${cls}">${label}</span></div>
-      <div class="bar"><i style="width:${prog}%"></i></div>
+      <div class="bar"><i style="width:${prog}%" ${st!=='done'&&st!=='failed'?'data-pulse':''}></i></div>
       ${extra}
     </div>`;
   }).join('');
+  // wire copy buttons
+  box.querySelectorAll('[data-copy]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const link = location.origin + btn.dataset.copy;
+      try{
+        await navigator.clipboard.writeText(link);
+        toast('已複製連結');
+      }catch(e){
+        // fallback for non-secure contexts
+        const ta = document.createElement('textarea');
+        ta.value = link; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove();
+        toast('已複製連結');
+      }
+    });
+  });
 }
 
 function startPolling(){
@@ -152,7 +238,14 @@ function startPolling(){
 }
 
 $('#go').addEventListener('click', submit);
+$('#dna').addEventListener('click', ()=>{
+  $('#script').value = DNA_TEMPLATE;
+  if(!$('#brand').value) $('#brand').value = 'sushi_dr';
+  toast('已填入品牌 DNA 範本');
+});
 loadFeat();
+loadBrands();
+renderExamples();
 refresh();
 loadMetrics();
 setInterval(loadMetrics, 5000);
