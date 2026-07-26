@@ -6,9 +6,14 @@ venv/
 
 # Secrets / runtime
 .env
+.env.*
+!.env.example
 storage/
 jobs.db
 *.log
+
+# Deploy secrets (never commit)
+deploy/.env
 
 # OS
 .DS_Store

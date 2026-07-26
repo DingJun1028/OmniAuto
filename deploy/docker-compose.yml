@@ -1,0 +1,47 @@
+# AI Station — production deployment stack for the esggo VPS.
+#
+# Prereqs on the VPS (Ubuntu/Debian):
+#   - docker + docker compose plugin
+#   - nginx (for the reverse proxy in ./nginx)
+#   - a DNS A/AAAA record for the chosen subdomain -> VPS IP
+#   - (optional) certbot for Let's Encrypt HTTPS
+#
+# Bring it up:
+#   docker compose pull
+#   docker compose up -d
+# Then point nginx at 127.0.0.1:8000 (see ./nginx/aistation.esggo.co.conf)
+# and reload:  sudo nginx -t && sudo systemctl reload nginx
+
+services:
+  aistation:
+    image: docker.io/dingjunhong1028/aistation:latest
+    container_name: aistation
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"   # bound to localhost; nginx is the public face
+    environment:
+      # All cloud keys are OPTIONAL — leave blank to run free (edge-tts/ffmpeg/Pillow).
+      # Set these via an env_file or directly; never commit secrets.
+      WEBHOOK_SECRET: "${WEBHOOK_SECRET:-}"
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      ELEVENLABS_API_KEY: "${ELEVENLABS_API_KEY:-}"
+      RUNWAY_API_KEY: "${RUNWAY_API_KEY:-}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID:-}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY:-}"
+      AWS_S3_BUCKET: "${AWS_S3_BUCKET:-}"
+      AWS_REGION: "${AWS_REGION:-us-east-1}"
+      NCBDB_BASE_URL: "${NCBDB_BASE_URL:-}"
+      NCBDB_TOKEN: "${NCBDB_TOKEN:-}"
+      VIDEO_WIDTH: "1280"
+      VIDEO_HEIGHT: "720"
+      VIDEO_FPS: "30"
+      AI_STATION_LOG_LEVEL: "INFO"
+    volumes:
+      # Rendered videos + job state persist on the host.
+      - ./storage:/app/storage
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
