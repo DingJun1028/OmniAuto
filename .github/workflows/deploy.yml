@@ -17,8 +17,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Only run if the SSH secret is configured.
-    if: ${{ secrets.SSH_PRIVATE_KEY != '' && secrets.DEPLOY_HOST != '' && secrets.DEPLOY_USER != '' }}
     steps:
       - uses: actions/checkout@v4
 
