@@ -1,4 +1,4 @@
-name: 🔧 nginx favicon route fix
+name: 🔧 nginx favicon fix v2
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Add favicon location to nginx
+      - name: Fix nginx favicon location
         env:
           HOST: ${{ secrets.DEPLOY_HOST }}
           USER: ${{ secrets.DEPLOY_USER }}
@@ -18,9 +18,6 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
           ssh -i ~/.ssh/deploy_key "$USER@$HOST" bash -c "'
-            set -e
-            # Add favicon location before the proxy_pass block
-            sudo sed -i \"s|proxy_pass http://127.0.0.1:8000;|proxy_pass http://127.0.0.1:8000;\\n\\n    location = /favicon.ico {\\n        root /var/www/aistation;\\n        expires 30d;\\n        access_log off;\\n    }|\" /etc/nginx/sites-available/aistation.esggo.co.conf
-            sudo nginx -t && sudo systemctl reload nginx
-            echo \"nginx favicon route added\"
+            sed -i \"s|location / {|location = /favicon.ico {\\n        root /var/www/aistation;\\n        expires 30d;\\n        access_log off;\\n    }\\n\\n    location / {|\" /etc/nginx/sites-available/aistation.esggo.co.conf
+            nginx -t && systemctl reload nginx && echo \"OK: favicon route added\"
           '"
