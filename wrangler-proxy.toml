@@ -1,0 +1,10 @@
+name = "ai-station-proxy"
+main = "workers/ai-station-proxy.js"
+compatibility_date = "2026-07-28"
+
+routes = [
+  { pattern = "aistation.esggo.co/*", zone_id = "8dda3653e490290412f7be84a84e0dc9" }
+]
+
+[observability]
+enabled = true
