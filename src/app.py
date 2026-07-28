@@ -185,6 +185,14 @@ def index():
     return (BASE_DIR / "web" / "index.html").read_text(encoding="utf-8")
 
 
+@app.get("/favicon.ico", response_class=FileResponse)
+def favicon():
+    ico = BASE_DIR / "web" / "favicon.svg"
+    if ico.exists():
+        return FileResponse(str(ico), media_type="image/svg+xml")
+    return FileResponse(str(ico) if ico.exists() else str(BASE_DIR / "web" / "index.html"))
+
+
 # Serve generated assets (local storage, IDEA.md module 6 fallback).
 # Guarded against path traversal: resolve and confirm inside STORAGE_DIR.
 @app.get("/storage/{rest_of_path:path}")

@@ -1,0 +1,20 @@
+name: restore nginx config
+
+on: workflow_dispatch
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: restore nginx config from repo
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+          cat deploy/nginx/aistation.esggo.co.conf | ssh -i ~/.ssh/deploy_key "$USER@$HOST" sudo tee /etc/nginx/sites-available/aistation.esggo.co.conf > /dev/null
+          ssh -i ~/.ssh/deploy_key "$USER@$HOST" 'sudo nginx -t && sudo systemctl reload nginx && echo "OK"'
