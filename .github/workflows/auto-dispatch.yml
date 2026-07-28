@@ -1,0 +1,128 @@
+name: 🌐 OmniAuto 自动派ﬃ部署工作流程
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip_https:
+        description: "跳过 HTTPS 配置（可选）"
+        required: false
+        default: "false"
+      skip_deploy:
+        description: "跳过 VPS 部署（可选）"
+        required: false
+        default: "false"
+      skip_verify:
+        description: "跳过验证（可选）"
+        required: false
+        default: "false"
+
+jobs:
+  dispatch-https:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.skip_https == 'false' }}
+    steps:
+      - name: 派ﬃ HTTPS 配置
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 获取当前运行的运行 ID
+            const currentRunId = context.runId;
+            
+            // 派ﬃ https.yml 工作流程
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "https.yml",
+              ref: "main",
+              inputs: {
+                domain: "aistation.esggo.co"
+              }
+            });
+            
+            // 等待 10 秒，确保任务已开始
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
+            // 获取派ﬃ的任务
+            const { data: tasks } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "https.yml",
+              branch: "main"
+            });
+            
+            // 显示派ﬃ结果
+            console.log("✅ HTTPS 配置工作流程已派ﬃ，运行 ID:", tasks.workflow_runs[0].id);
+            console.log("📋 运行 URL:", tasks.workflow_runs[0].html_url);
+            
+            return { success: true, run_id: tasks.workflow_runs[0].id };
+
+  dispatch-deploy:
+    runs-on: ubuntu-latest
+    needs: [dispatch-https]
+    if: ${{ github.event.inputs.skip_deploy == 'false' }}
+    steps:
+      - name: 派ﬃ VPS 部署
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 派ﬃ deploy.yml 工作流程
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "deploy.yml",
+              ref: "main",
+              inputs: {
+                domain: "aistation.esggo.co"
+              }
+            });
+            
+            // 等待 10 秒，确保任务已开始
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
+            // 获取派ﬃ的任务
+            const { data: tasks } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "deploy.yml",
+              branch: "main"
+            });
+            
+            // 显示派ﬃ结果
+            console.log("✅ VPS 部署工作流程已派ﬃ，运行 ID:", tasks.workflow_runs[0].id);
+            console.log("📋 运行 URL:", tasks.workflow_runs[0].html_url);
+            
+            return { success: true, run_id: tasks.workflow_runs[0].id };
+
+  dispatch-verify:
+    runs-on: ubuntu-latest
+    needs: [dispatch-https]
+    if: ${{ github.event.inputs.skip_verify == 'false' }}
+    steps:
+      - name: 派ﬃ验证
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 派ﬃ verify.yml 工作流程
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "verify.yml",
+              ref: "main",
+            });
+            
+            // 等待 10 秒，确保任务已开始
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            
+            // 获取派ﬃ的任务
+            const { data: tasks } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "verify.yml",
+              branch: "main"
+            });
+            
+            // 显示派ﬃ结果
+            console.log("✅ 验证工作流程已派ﬃ，运行 ID:", tasks.workflow_runs[0].id);
+            console.log("📋 运行 URL:", tasks.workflow_runs[0].html_url);
+            
+            return { success: true, run_id: tasks.workflow_runs[0].id };
