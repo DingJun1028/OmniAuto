@@ -16,6 +16,10 @@ on:
         required: false
         default: "false"
 
+permissions:
+  actions: write
+  contents: read
+
 jobs:
   dispatch-https:
     runs-on: ubuntu-latest
