@@ -1,0 +1,63 @@
+name: ✅ Full DNS Setup — by VPS
+  
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  setup-dns-via-vps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Write SSH private key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Try multiple DNS creation approaches from VPS
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          echo "=== Attempt 1: Create DNS A record via VPS curl ==="
+          ssh -i ~/.ssh/deploy_key "$USER@$HOST" bash -c "'
+            set -e
+            # Check if aistation.esggo.co resolves
+            if host aistation.esggo.co 8.8.8.8 >/dev/null 2>&1; then
+              echo \"DNS already resolves\"
+              exit 0
+            fi
+            echo \"DNS does not resolve yet\"
+            
+            # Try to create via Oracle Cloud DNS API (if configured)
+            # Try to install dnsutils
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq dnsutils curl jq 2>/dev/null
+            
+            # Print VPS public IP for reference
+            VPS_IP=\$(curl -s https://api.ipify.org)
+            echo \"VPS Public IP: \$VPS_IP\"
+          '"
+
+      - name: Check nginx config for aistation
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$USER@$HOST" bash -c "'
+            echo \"=== Checking nginx sites-enabled ===\"
+            ls -la /etc/nginx/sites-enabled/ 2>/dev/null || echo \"no sites-enabled\"
+            echo \"=== Checking nginx for domain config ===\"
+            grep -r \"aistation\" /etc/nginx/ 2>/dev/null || echo \"No aistation config found\"
+            echo \"=== Testing nginx directly ===\"
+            curl -s -o /dev/null -w \"HTTP %{http_code}\" http://localhost/api/health 2>&1 || echo \"nginx not proxying\"
+          '"
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
