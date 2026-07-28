@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: ai-station
+Version: 0.1.0
+Summary: AI Station - full-automatic video production pipeline (control center)
+Requires-Python: >=3.11
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: pillow
+Requires-Dist: numpy
+Requires-Dist: edge-tts
+Requires-Dist: httpx
+Requires-Dist: python-dotenv
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pyyaml; extra == "dev"
+Provides-Extra: s3
+Requires-Dist: boto3; extra == "s3"

@@ -1,7 +1,13 @@
-"""AI Station — FastAPI control center.
+"""
+AI Station — FastAPI control center.
 
 Exposes the orchestration hub (IDEA.md module 1) over HTTP so it can be
 driven by n8n webhooks, the built-in web UI, or any client.
+
+Uses hybrid TypeScript approach:
+- 方案 A: TypeScript types (web/src/types/api.ts) - synced from Python Pydantic
+- 方案 B: Zod schemas (web/src/types/schemas.ts) - for frontend validation
+- 方案 C: OpenAPI auto-generation - FastAPI auto-generates OpenAPI spec
 """
 from __future__ import annotations
 
@@ -12,7 +18,9 @@ import hmac
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import FileResponse, HTMLResponse
-from pydantic import BaseModel
+
+# Import types from the centralized type definitions
+from .types.api import ScriptIn, JobResponse, WebhookIn
 
 from . import db, pipeline
 from . import config
@@ -21,12 +29,6 @@ from .config import BASE_DIR, feature_summary, setup_logging, log
 app = FastAPI(title="AI Station", version="0.1.0")
 db.init_db()
 setup_logging()  # TODO pillar 6: structured logging (no-op if already configured)
-
-
-class ScriptIn(BaseModel):
-    title: str = "Untitled"
-    script: str
-    brand_preset: str | None = None  # e.g. "sushi_dr" for 壽司博士 Dr. Source
 
 
 # ---- Lightweight in-memory rate limiter (best-practice: abuse resistance) ----
@@ -60,12 +62,12 @@ def rate_limit(request: Request):
 
 
 @app.get("/api/health")
-def health():
+def health() -> dict:
     return {"status": "ok", "features": feature_summary()}
 
 
 @app.get("/api/metrics")
-def metrics():
+def metrics() -> dict:
     """Lightweight pipeline observability (TODO pillar 6): throughput,
     reliability, and per-brand activity aggregated from the job store."""
     from . import metrics as _metrics
@@ -124,15 +126,6 @@ def job(job_id: str):
 # n8n posts { "title", "script" } (or a "text" field) and gets a
 # synchronous job result, so it can be dropped into any n8n flow as an
 # HTTP Request node and chained with scheduling / other services.
-class WebhookIn(BaseModel):
-    title: str = "Untitled"
-    script: str | None = None
-    text: str | None = None   # alias accepted by some n8n setups
-    brand_preset: str | None = None  # "sushi_dr" to render on-brand
-
-    @property
-    def body(self) -> str:
-        return self.script or self.text or ""
 
 
 def _check_webhook_auth(request: "Request"):

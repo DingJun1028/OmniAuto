@@ -1,0 +1,2 @@
+[console_scripts]
+ai-station = src.app:main

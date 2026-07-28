@@ -25,8 +25,9 @@ dev = [
 # Optional cloud extras — only needed when the corresponding key is set.
 s3 = ["boto3"]
 
-[tool.setuptools]
-packages = ["src"]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["src*"]
 
 [project.scripts]
 ai-station = "src.app:main"

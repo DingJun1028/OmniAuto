@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pillow
+numpy
+edge-tts
+httpx
+python-dotenv
+
+[dev]
+pytest
+pyyaml
+
+[s3]
+boto3
