@@ -204,6 +204,7 @@ def test_kpi_esggo_summary_unwrap_double_nested(monkeypatch):
         def json(self):
             return {"success": True, "data": {"success": True, "data": {"caseCount": 47, "griIndicatorCount": 142}}}
 
+    monkeypatch.setattr(kpi, "ESGO_SUMMARY_URL", "http://esggo.test")
     monkeypatch.setattr(kpi.httpx, "get", lambda *a, **k: _Resp())
     summary = kpi.fetch_esggo_summary()
     assert summary is not None
@@ -221,6 +222,7 @@ def test_kpi_esggo_summary_single_nested(monkeypatch):
         def json(self):
             return {"data": {"caseCount": 10, "griIndicatorCount": 20}}
 
+    monkeypatch.setattr(kpi, "ESGO_SUMMARY_URL", "http://esggo.test")
     monkeypatch.setattr(kpi.httpx, "get", lambda *a, **k: _Resp())
     summary = kpi.fetch_esggo_summary()
     assert summary is not None
@@ -237,6 +239,7 @@ def test_weekly_report_renders_esggo(monkeypatch, isolated_state):
         def json(self):
             return {"success": True, "data": {"success": True, "data": {"caseCount": 47, "griIndicatorCount": 142}}}
 
+    monkeypatch.setattr(kpi, "ESGO_SUMMARY_URL", "http://esggo.test")
     monkeypatch.setattr(kpi.httpx, "get", lambda *a, **k: _Resp())
     report = kpi.build_weekly_report(pairing=100, entropy=0.08, security=0, satisfaction=4.6)
     assert report["esggo_omnicenter"]["caseCount"] == 47
