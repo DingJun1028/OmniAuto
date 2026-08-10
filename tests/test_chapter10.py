@@ -32,6 +32,12 @@ def _good_artifact():
     return {
         "uuid": "job_abc123",
         "source_origin": "aistation:src/pipeline.py",
+        "sources": [
+            "aistation:src/pipeline.py",
+            "aistation:src/notify.py",
+            "esggo:app/api/verify-5t",
+            "esggo:packages/omni-agent-bus",
+        ],
         "lifecycle_hooks": ["created", "rendered", "done"],
         "ui_feedback": {"rating": 4.7},
         "transparent_audit": True,
@@ -158,6 +164,34 @@ def test_verify_via_esggo_local_fallback(monkeypatch):
     res = gate5t.verify_via_esggo(locked)
     assert res["ok"] is True
     assert res["source"] == "local"
+
+
+def test_verify_via_esggo_passes_authority(monkeypatch):
+    """With ESGO_HASHLOCK_URL set + 4 sources, esggo authority returns pass=true."""
+    # module-level constant read at import; override directly
+    monkeypatch.setattr(gate5t, "ESGO_HASHLOCK_URL", "http://esggo.test")
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {"pass": True, "status": {"traceable": True}, "score": {}, "hashLock": "abc"}
+
+    captured = {}
+
+    def _post(url, json=None, timeout=10.0, **kw):
+        captured["url"] = url
+        captured["payload"] = json
+        return _Resp()
+
+    monkeypatch.setattr(gate5t.httpx, "post", _post)
+    locked = gate5t.lock_artifact(_good_artifact())
+    res = gate5t.verify_via_esggo(locked)
+    assert res["ok"] is True
+    assert res["source"] == "esggo"
+    # payload carries the multi-source list so esggo's traceable gate can pass
+    assert captured["payload"]["sources"] == _good_artifact()["sources"]
+    assert captured["url"].endswith("/api/verify-5t")
 
 
 def test_kpi_esggo_summary_unwrap_double_nested(monkeypatch):

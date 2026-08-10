@@ -85,6 +85,9 @@ def verify_5t(
         report.missing.append("source_origin")
     if not has_uuid:
         report.missing.append("uuid")
+    # sources: 多源陣列 (>=4 建議, 單源仍過欄位閘但權威閘需多源)
+    if "sources" in a and not isinstance(a.get("sources"), (list, tuple)):
+        report.errors.append("sources must be a list")
 
     # --- Trackable ---
     hooks = a.get("lifecycle_hooks")
@@ -161,7 +164,7 @@ def verify_locked(locked: LockedArtifact) -> bool:
 # runtimes share ONE 5T contract. Network calls are best-effort: if the
 # esggo hashlock endpoint is unreachable, we fall back to the local digest,
 # exactly like the AI Station "優雅回落" rule (§九 / §22).
-ESGGG_HASHLOCK_URL = os.getenv("ESGO_HASHLOCK_URL", "").rstrip("/")
+ESGO_HASHLOCK_URL = os.getenv("ESGO_HASHLOCK_URL", "").rstrip("/")
 
 
 def to_component_core(locked: LockedArtifact, version: str = "1.0.0") -> dict:
@@ -196,12 +199,22 @@ def verify_via_esggo(locked: LockedArtifact, version: str = "1.0.0") -> dict:
     Best-effort: on any network failure, falls back to local hash check so
     the pipeline never blocks on the gateway.
     """
-    if not ESGGG_HASHLOCK_URL:
+    if not ESGO_HASHLOCK_URL:
         ok = verify_locked(locked)
         return {"ok": ok, "source": "local", "detail": "ESGO_HASHLOCK_URL unset; local verify"}
     # Map the locked artifact's 5T checks to esggo's verify-5t contract.
+    # sources: 多源陣列 (>=4 才過 esggo traceable 權威閘); fallback 單源.
+    try:
+        _art = json.loads(locked.payload) if isinstance(locked.payload, str) else locked.payload
+    except Exception:
+        _art = {}
+    src_origin = _art.get("source_origin", "") if isinstance(_art, dict) else ""
+    sources = _art.get("sources", []) if isinstance(_art, dict) else []
+    if not sources and src_origin:
+        sources = [src_origin]
     payload = {
-        "source_origin": locked.checks.get("Traceable") and locked.uuid or "",
+        "source_origin": src_origin,
+        "sources": sources,
         "lifecycle_hooks": ["locked"] if locked.checks.get("Trackable") else [],
         "ui_feedback": locked.checks.get("Tangible", False),
         "transparent_audit": locked.checks.get("Transparent", False),
