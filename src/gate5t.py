@@ -185,25 +185,37 @@ def to_component_core(locked: LockedArtifact, version: str = "1.0.0") -> dict:
 
 
 def verify_via_esggo(locked: LockedArtifact, version: str = "1.0.0") -> dict:
-    """Verify a locked artifact against esggo's hashlock service (single source).
+    """Verify a locked artifact against esggo's unified 5T endpoint (single source).
+
+    Calls esggo `/api/verify-5t` so the 5T verdict comes from ONE place
+    (oa-framework / five-t-protocol), not a duplicated Python re-implementation.
+    The artifact's 5T fields are mapped to the endpoint contract; esggo returns
+    the authoritative {pass, status, score, hashLock}.
 
     Returns {"ok": bool, "source": "esggo"|"local", "detail": str}.
     Best-effort: on any network failure, falls back to local hash check so
     the pipeline never blocks on the gateway.
     """
-    core = to_component_core(locked, version)
     if not ESGGG_HASHLOCK_URL:
         ok = verify_locked(locked)
         return {"ok": ok, "source": "local", "detail": "ESGO_HASHLOCK_URL unset; local verify"}
+    # Map the locked artifact's 5T checks to esggo's verify-5t contract.
+    payload = {
+        "source_origin": locked.checks.get("Traceable") and locked.uuid or "",
+        "lifecycle_hooks": ["locked"] if locked.checks.get("Trackable") else [],
+        "ui_feedback": locked.checks.get("Tangible", False),
+        "transparent_audit": locked.checks.get("Transparent", False),
+        "frozen": locked.checks.get("Trustworthy", False),
+    }
     try:
         resp = httpx.post(
-            f"{ESGO_HASHLOCK_URL}/api/hashlock",
-            json={"action": "verify", "data": locked.payload, "salt": locked.uuid, "hashLock": locked.hash_lock},
+            f"{ESGO_HASHLOCK_URL}/api/verify-5t",
+            json=payload,
             timeout=10.0,
         )
         if resp.status_code == 200:
             body = resp.json()
-            return {"ok": bool(body.get("ok", False)), "source": "esggo", "detail": str(body)}
+            return {"ok": bool(body.get("pass", False)), "source": "esggo", "detail": str(body)}
         return {"ok": verify_locked(locked), "source": "local", "detail": f"esggo HTTP {resp.status_code}; local fallback"}
     except Exception as e:  # noqa: BLE001 best-effort graceful degradation
         log.warning("gate5t.verify_via_esggo fell back to local: %s", e)
