@@ -125,13 +125,20 @@ def fetch_esggo_summary() -> dict | None:
     """Pull esggo OmniCenter summary (caseCount / griIndicatorCount).
 
     Best-effort: returns None on any failure so the board never blocks.
+    esggo summary route returns a double-nested {data:{data:{...}}} shape,
+    so we unwrap defensively.
     """
     if not ESGO_SUMMARY_URL:
         return None
     try:
         resp = httpx.get(f"{ESGO_SUMMARY_URL}/api/omni-center/summary", timeout=10.0)
         if resp.status_code == 200:
-            return resp.json().get("data")
+            payload = resp.json()
+            # unwrap: {data:{data:{...}}} or {data:{...}}
+            inner = payload.get("data", payload)
+            if isinstance(inner, dict) and "data" in inner:
+                inner = inner["data"]
+            return inner if isinstance(inner, dict) else None
     except Exception as e:  # noqa: BLE001
         log.warning("kpi.fetch_esggo_summary failed: %s", e)
     return None

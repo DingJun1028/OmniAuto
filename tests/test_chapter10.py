@@ -158,3 +158,54 @@ def test_verify_via_esggo_local_fallback(monkeypatch):
     res = gate5t.verify_via_esggo(locked)
     assert res["ok"] is True
     assert res["source"] == "local"
+
+
+def test_kpi_esggo_summary_unwrap_double_nested(monkeypatch):
+    """esggo /api/omni-center/summary returns {data:{data:{...}}} (double nested)."""
+    import src.kpi as kpi
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {"success": True, "data": {"success": True, "data": {"caseCount": 47, "griIndicatorCount": 142}}}
+
+    monkeypatch.setattr(kpi.httpx, "get", lambda *a, **k: _Resp())
+    summary = kpi.fetch_esggo_summary()
+    assert summary is not None
+    assert summary.get("caseCount") == 47
+    assert summary.get("griIndicatorCount") == 142
+
+
+def test_kpi_esggo_summary_single_nested(monkeypatch):
+    """Older shape {data:{...}} still unwraps."""
+    import src.kpi as kpi
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {"data": {"caseCount": 10, "griIndicatorCount": 20}}
+
+    monkeypatch.setattr(kpi.httpx, "get", lambda *a, **k: _Resp())
+    summary = kpi.fetch_esggo_summary()
+    assert summary is not None
+    assert summary.get("caseCount") == 10
+
+
+def test_weekly_report_renders_esggo(monkeypatch, isolated_state):
+    """build_weekly_report includes esggo OmniCenter when summary available."""
+    import src.kpi as kpi
+
+    class _Resp:
+        status_code = 200
+
+        def json(self):
+            return {"success": True, "data": {"success": True, "data": {"caseCount": 47, "griIndicatorCount": 142}}}
+
+    monkeypatch.setattr(kpi.httpx, "get", lambda *a, **k: _Resp())
+    report = kpi.build_weekly_report(pairing=100, entropy=0.08, security=0, satisfaction=4.6)
+    assert report["esggo_omnicenter"]["caseCount"] == 47
+    md = kpi.render_weekly_markdown(report)
+    assert "案件數: 47" in md
+    assert "GRI 指標: 142" in md
