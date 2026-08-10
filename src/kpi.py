@@ -109,3 +109,88 @@ def render_text(snap: KpiSnapshot) -> str:
         for a in snap.alerts:
             lines.append(f"  [{a['level']}] {a['metric']} = {a['value']} (目標 {a['target']})")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Cross-repo aggregation (§23 §24 P1: single KPI board)
+# ---------------------------------------------------------------------------
+import os
+
+import httpx
+
+ESGO_SUMMARY_URL = os.getenv("ESGO_SUMMARY_URL", "").rstrip("/")
+
+
+def fetch_esggo_summary() -> dict | None:
+    """Pull esggo OmniCenter summary (caseCount / griIndicatorCount).
+
+    Best-effort: returns None on any failure so the board never blocks.
+    """
+    if not ESGO_SUMMARY_URL:
+        return None
+    try:
+        resp = httpx.get(f"{ESGO_SUMMARY_URL}/api/omni-center/summary", timeout=10.0)
+        if resp.status_code == 200:
+            return resp.json().get("data")
+    except Exception as e:  # noqa: BLE001
+        log.warning("kpi.fetch_esggo_summary failed: %s", e)
+    return None
+
+
+def build_weekly_report(**overrides) -> dict:
+    """Assemble the weekly swarm report payload (for newsletter / n8n).
+
+    Combines local AI Station metrics + esggo OmniCenter summary + caller
+    supplied swarm KPIs. Never fabricates missing values — omits them.
+    """
+    snap = snapshot(**overrides)
+    esggo = fetch_esggo_summary()
+    report = {
+        "overall": snap.overall,
+        "generated_at": int(__import__("time").time()),
+        "kpi": {
+            "values": snap.values,
+            "targets": snap.targets,
+            "alerts": snap.alerts,
+        },
+        "esggo_omnicenter": esggo or {},
+    }
+    return report
+
+
+def render_weekly_markdown(report: dict) -> str:
+    """Render the weekly report as markdown (newsletter body).
+
+    `report` is the dict from build_weekly_report(); re-derives statuses
+    from the stored values/targets so nothing is fabricated.
+    """
+    values = report.get("kpi", {}).get("values", {})
+    targets = report.get("kpi", {}).get("targets", {})
+    lines = [f"# 萬能蜂群週報 — 總評 {report.get('overall', 'N/A')}", ""]
+    for k, v in values.items():
+        t = targets.get(k)
+        st = _status_of(k, v, t)
+        lines.append(f"- **{k}**: {v}  (目標 {t})  [{st}]")
+    esggo = report.get("esggo_omnicenter") or {}
+    if esggo:
+        lines.append("")
+        lines.append("## esggo OmniCenter")
+        lines.append(f"- 案件數: {esggo.get('caseCount', '?')}")
+        lines.append(f"- GRI 指標: {esggo.get('griIndicatorCount', '?')}")
+    return "\n".join(lines)
+
+
+def _status_of(key: str, v, t) -> str:
+    """Mirror KpiSnapshot.status() without needing the dataclass instance."""
+    if v is None or t is None:
+        return "N/A"
+    if key in ("handoff_time", "defect_rate", "security_events", "entropy"):
+        ratio = v / t if t else (0.0 if v == 0 else 9.9)
+    else:
+        ratio = t / v if v else 9.9
+    if ratio <= 1.0:
+        return "OK"
+    if ratio <= 1.15:
+        return "WARN"
+    return "CRIT"
+

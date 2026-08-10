@@ -1,0 +1,48 @@
+{
+  "name": "OA-Team Weekly Swarm Report",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "weeks", "weeksInterval": 1 },
+            { "field": "weekdays", "weekdays": [1] },
+            { "field": "hours", "hoursInterval": 9 }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "每週一 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/aistation && python scripts/weekly_report.py --channels telegram --pairing {{ $env.OA_PAIRING_PCT }} --entropy {{ $env.OA_ENTROPY }} --security {{ $env.OA_SECURITY_EVENTS }} --satisfaction {{ $env.OA_SATISFACTION }}",
+        "env": {
+          "OA_PAIRING_PCT": "={{ $env.OA_PAIRING_PCT }}",
+          "OA_ENTROPY": "={{ $env.OA_ENTROPY }}",
+          "OA_SECURITY_EVENTS": "={{ $env.OA_SECURITY_EVENTS }}",
+          "OA_SATISFACTION": "={{ $env.OA_SATISFACTION }}",
+          "TELEGRAM_BOT_TOKEN": "={{ $env.TELEGRAM_BOT_TOKEN }}",
+          "TELEGRAM_CHAT_ID": "={{ $env.TELEGRAM_CHAT_ID }}",
+          "TELEGRAM_THREAD_ID": "={{ $env.TELEGRAM_THREAD_ID }}"
+        }
+      },
+      "id": "exec",
+      "name": "生成並發送週報",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1.1,
+      "position": [520, 300],
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "每週一 09:00": {
+      "main": [[{ "node": "生成並發送週報", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateId": "oa-team-weekly-swarm-report" }
+}
