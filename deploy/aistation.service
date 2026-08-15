@@ -1,0 +1,15 @@
+[Unit]
+Description=AI Station (FastAPI)
+After=network.target
+
+[Service]
+User=ubuntu
+Type=simple
+WorkingDirectory=/opt/esggo/apps/aistation
+ExecStart=/opt/esggo/apps/aistation/.venv/bin/uvicorn src.app:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
