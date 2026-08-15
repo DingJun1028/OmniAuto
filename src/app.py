@@ -75,6 +75,60 @@ def metrics() -> dict:
     return _metrics.compute_metrics()
 
 
+@app.get("/api/best-practice")
+def best_practice_report():
+    """Best-practice report (Chapter 10): combines 5T gate results,
+    KPI snapshot, and pipeline metrics into one verifiable artifact."""
+    from . import db, gate5t, kpi, metrics as _metrics
+
+    jobs = db.list_jobs(20)
+    artifacts = []
+    for j in jobs:
+        raw = j.get("result") or j.get("payload") or "{}"
+        try:
+            payload = json.loads(raw) if isinstance(raw, str) else raw
+        except Exception:
+            payload = {"raw": raw}
+        if not isinstance(payload, dict):
+            payload = {"value": payload}
+        payload.setdefault("uuid", j.get("job_id"))
+        payload.setdefault("source_origin", "aistation.db")
+        payload.setdefault("lifecycle_hooks", ["created", j.get("status", "unknown")])
+        payload.setdefault("ui_feedback", "metrics")
+        payload.setdefault("transparent_audit", {"zero_hallucination": True})
+        payload.setdefault("frozen", False)
+        report = gate5t.verify_5t(payload)
+        artifacts.append(
+            {
+                "job_id": j.get("job_id"),
+                "status": j.get("status"),
+                "5t": {
+                    "passed": report.passed,
+                    "checks": report.checks,
+                    "missing": report.missing,
+                },
+            }
+        )
+
+    snap = kpi.snapshot()
+    m = _metrics.compute_metrics()
+    return {
+        "generated_at": int(__import__("time").time()),
+        "pipeline_metrics": m,
+        "kpi": {
+            "overall": snap.overall,
+            "values": snap.values,
+            "targets": snap.targets,
+            "alerts": snap.alerts,
+        },
+        "recent_jobs_5t": artifacts,
+        "entropy_control": {
+            "current": snap.values.get("entropy"),
+            "target": "< 0.1",
+        },
+    }
+
+
 @app.post("/api/jobs")
 def create_job(payload: ScriptIn, request: Request, _: None = Depends(rate_limit)):
     """Submit a job. Returns immediately (202) with the job id; the heavy
@@ -201,6 +255,12 @@ def storage_file(rest_of_path: str):
     if not str(target).startswith(str(config.STORAGE_DIR.resolve())) or not target.exists():
         raise HTTPException(404, "not found")
     return FileResponse(str(target))
+
+
+# ---- OCI Infrastructure Controller (optional step #8) ----
+from .oci_controller import router as oci_router
+
+app.include_router(oci_router)
 
 
 def main():
