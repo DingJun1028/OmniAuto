@@ -90,7 +90,7 @@ jobs:
     # so the default CI stays free + green. Best-effort; never blocks the main
     # build. Keys are injected as env vars, never printed or committed.
     needs: build
-    if: ${{ needs.build.outputs.cloud_ready == 'true' }}
+    if: ${{ needs.build.outputs.ready == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

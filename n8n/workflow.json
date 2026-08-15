@@ -18,7 +18,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://<AI_STATION_HOST>:8000/webhook/n8n",
+        "url": "https://aistation.esggo.co/webhook/n8n",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"title\": \"每日快報 {{ $now.format('YYYY-MM-DD') }}\",\n  \"script\": \"在此放你的腳本。例如：今天發生了什麼事。我們用 AI Station 自動生成這支影片。\"\n}"

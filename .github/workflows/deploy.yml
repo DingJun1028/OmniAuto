@@ -65,8 +65,8 @@ jobs:
             cd ~/aistation/deploy
             docker compose pull
             docker compose up -d
-            sudo cp nginx/aistation.esggo.co.conf /etc/nginx/sites-available/'"$DOMAIN"'.conf
-            sudo ln -sf /etc/nginx/sites-available/'"$DOMAIN"'.conf /etc/nginx/sites-enabled/'"$DOMAIN"'.conf
+            sudo cp nginx/aistation.esggo.co.conf /etc/nginx/sites-available/$DOMAIN.conf
+            sudo ln -sf /etc/nginx/sites-available/$DOMAIN.conf /etc/nginx/sites-enabled/$DOMAIN.conf
             sudo nginx -t && sudo systemctl reload nginx
           '"
           # 3. health check
