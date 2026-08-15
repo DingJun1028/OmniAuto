@@ -150,7 +150,7 @@ def test_n8n_webhook_returns_compact_result(isolated_state):
     from fastapi.testclient import TestClient
     client = TestClient(app.app)
     r = client.post("/webhook/n8n",
-                    json={"title": "t", "script": "城市夜晚閃爍。科技改變生活。"})
+                    json={"title": "t", "script": "【場景】大家好，我是壽司博士。城市夜晚閃爍。【衝突】科技改變生活。"})
     assert r.status_code == 200
     b = r.json()
     assert b["status"] == "done"
@@ -324,7 +324,7 @@ def test_api_series_endpoint(isolated_state):
     assert "ESG做完了然後呢" in body["series"]
     rb = c.get("/api/brand")
     assert rb.status_code == 200 and rb.json()["host"] == "壽司博士 Dr. Source"
-    script = "【場景】測試場景。\n【反思】測試反思。\n"
+    script = "【場景】大家好，我是壽司博士。測試場景。\n【反思】測試反思。\n"
     rj = c.post("/api/jobs", json={"script": script, "brand_preset": "sushi_dr"})
     assert rj.status_code == 200
     # API now returns immediately (queued); poll until the job resolves.
@@ -534,7 +534,7 @@ def test_integration_render_runs_ffmpeg(isolated_state):
     from src import pipeline
 
     script = (
-        "【場景】一家公司花了一年寫完永續報告。\n"
+        "【場景】大家好，我是壽司博士。一家公司花了一年寫完永續報告。\n"
         "【衝突】報告完成了，公司卻沒有改變。\n"
         "【洞察】ESG 被當成交付物而不是經營系統。\n"
         "【方法】用 1.0、1.5、2.0 檢查位置。\n"

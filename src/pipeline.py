@@ -16,6 +16,7 @@ from pathlib import Path
 from . import db
 from . import config
 from . import renderer, storage, tts, visuals
+from . import notify
 from .config import log
 from .parser import parse_script, Shot
 
@@ -80,6 +81,26 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
     renderer.render_final(clips, video, shots=shot_dicts_ordered,
                           brand_preset=brand_preset)
 
+    # 5T 品牌一致性關卡（Transparent + Tangible + Trustworthy）
+    # 在 publish 前阻擋品牌偏離的成品外流。
+    try:
+        from . import brand_verify as _bv
+        _res = _bv.verify_batch(shot_dicts_ordered, preset=brand_preset or "sushi_dr")
+        db.update_job(job_id, status="brand_check", progress=91, payload=__json({
+            "brand_verification": {
+                "passed": _res.passed,
+                "issues": _res.issues,
+                "checks": _res.checks,
+            }
+        }))
+        log.info("job=%s brand_check passed=%s issues=%s", job_id, _res.passed, _res.issues)
+        if not _res.passed:
+            db.update_job(job_id, status="failed", progress=93)
+            notify.video_done(job_id, title, "", status="failed")
+            return ""
+    except Exception as _bv_exc:
+        log.warning("job=%s brand_verify error=%s", job_id, _bv_exc)
+
     # 6: publish
     db.update_job(job_id, status="publishing", progress=95)
     url = storage.publish(video)
@@ -92,6 +113,9 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
         result=__json({"video_url": url, "file": str(video), "shots": len(shots)}),
     )
     log.info("job=%s done video=%s", job_id, video)
+    # Notify Hermes gateway (Telegram direct delivery) — best-effort, never
+    # raises. Closes the OA-Team swarm loop: render done -> swarm alerted.
+    notify.video_done(job_id, title, url, status="done")
     return url
 
 
@@ -123,6 +147,8 @@ def submit(script: str, title: str, brand_preset: str | None = None) -> str:
         except Exception as e:
             log.exception("job=%s failed (background)", job_id)
             db.update_job(job_id, status="failed", result=__json({"error": str(e)}))
+            # Best-effort failure alert to the swarm (Telegram direct delivery).
+            notify.video_done(job_id, title, "", status="failed")
 
     _pool.submit(_run)
     return job_id

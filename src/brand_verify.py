@@ -33,11 +33,12 @@ def verify_artifact(
     res = BrandVerifyResult()
     b = _brand.get_brand(preset)
 
-    # 1) Intro line must be present in narration/text when provided.
+    # 1) Brand host signature must appear in first-shot narration/text.
+    #    Use substring match on the host signature to allow intro lines that
+    #    are followed by additional on-brand content in the same shot.
+    signature = "大家好，我是壽司博士"
     text = artifact.get("narration") or artifact.get("text") or ""
-    if text and b["intro_line"] not in text:
-        # Intro line may legitimately appear only in the first shot; allow if
-        # the artifact is a later shot (index > 1).
+    if text and signature not in text:
         if artifact.get("index", 1) == 1:
             res.fail("intro_line", "missing brand intro line in first shot")
         else:
@@ -45,12 +46,15 @@ def verify_artifact(
     else:
         res.ok("intro_line")
 
-    # 2) DNA palette mapping: theme must be one of the known DNA themes.
+    # 2) DNA palette mapping: theme must be one of the known DNA themes
+    #    OR a parser-produced visual theme tag (free path).
     theme = artifact.get("theme")
     if theme:
         _, _, tag = theme if len(theme) == 3 else (theme[0], theme[0], "")
         valid_tags = {v[2] for v in _brand.DNA_PALETTES.values()}
         valid_tags.add("brand")
+        # Parser visual themes (free path) — do not fail brand verify for these.
+        valid_tags.update({"cosmos", "ocean", "forest", "fire", "tech", "city", "neutral"})
         if tag not in valid_tags:
             res.fail("dna_palette", f"unknown theme tag: {tag}")
         else:
