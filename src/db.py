@@ -1,7 +1,6 @@
 """Provenance log + job store (IDEA.md module 7).
-
-Default: local SQLite (jobs.db). If NCBDB_BASE_URL + NCBDB_TOKEN are
-set, lifecycle events are additionally mirrored to NoCodeBackend via HTTP.
+Default: local SQLite (jobs.db). If NCBDB_BASE_URL + NCBDB_TOKEN are set,
+lifecycle events are additionally mirrored to NoCodeBackend via HTTP.
 """
 from __future__ import annotations
 
@@ -25,10 +24,7 @@ def _conn() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    # Lazily ensure the storage directory exists (config no longer mkdir's at
-    # import time, to avoid polluting the repo root during test imports).
     from . import config
-
     config.STORAGE_DIR.mkdir(parents=True, exist_ok=True)
     with _conn() as conn:
         conn.execute(
@@ -62,6 +58,19 @@ def create_job(job_id: str, title: str, payload: dict) -> dict:
         )
     _log_provenance(job_id, "created", {"title": title})
     return get_job(job_id)  # type: ignore[return-value]
+
+
+def get_job_by_source(source: str):
+    """Return job row matching source_origin / MsgId, or None."""
+    try:
+        with _conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM jobs WHERE source = ? ORDER BY created_at DESC LIMIT 1",
+                (source,),
+            ).fetchone()
+        return dict(row) if row else None
+    except Exception:
+        return None
 
 
 def update_job(job_id: str, **fields) -> Optional[dict]:
@@ -108,5 +117,4 @@ def _log_provenance(job_id: str, event: str, data: dict) -> None:
             timeout=10,
         )
     except Exception:
-        # Provenance is best-effort; never break the pipeline on a log failure.
         pass

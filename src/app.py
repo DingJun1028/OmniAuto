@@ -15,6 +15,8 @@ import json
 import os
 from pathlib import Path
 import hmac
+import uuid
+import time
 
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import FileResponse, HTMLResponse
@@ -217,6 +219,48 @@ def webhook_n8n(payload: WebhookIn, request: "Request", _: None = Depends(rate_l
         "shots": res.get("shots"),
         "error": res.get("error") if job["status"] == "failed" else None,
     }
+
+
+@app.post("/webhook/tencent-rtc")
+def webhook_tencent_rtc(payload: dict, request: "Request", _: None = Depends(rate_limit)):
+    """Tencent RTC (TUIKit/IM) Chat callback webhook.
+
+    Accepts TRTC IM callback envelope (CallbackCommand / MsgId / From_Account),
+    applies 5T verification (HMAC auth + Object.freeze equivalent + source_origin),
+    and stores a frozen artifact in jobs.db. Idempotent on re-delivered MsgId.
+    """
+    # --- 5T: Trustworthy (constant-time HMAC auth) ---
+    secret = config.TENCENT_RTC_WEBHOOK_SECRET or config.WEBHOOK_SECRET
+    if secret:
+        sig = request.headers.get("X-Tencent-Signature") or request.headers.get("Signature") or ""
+        raw = getattr(request, "_body", b"")
+        expected = hmac.new(secret.encode(), raw, "sha256").hexdigest()
+        if not hmac.compare_digest(sig, secret) and not hmac.compare_digest(sig, expected):
+            raise HTTPException(401, "invalid tencent-rtc signature")
+
+    # --- Normalize TRTC envelope ---
+    msg_id = payload.get("MsgId") or payload.get("msgId") or str(uuid.uuid4())
+    from_account = payload.get("From_Account") or payload.get("FromAccount") or "unknown"
+    command = payload.get("CallbackCommand") or payload.get("callbackCommand") or "unknown"
+
+    # Idempotency: skip if MsgId already stored
+    existing = db.get_job_by_source(msg_id)
+    if existing:
+        return {"status": "duplicate", "msg_id": msg_id, "ok": True}
+
+    # --- 5T: Traceable (source_origin) + Transparent (structured) ---
+    artifact = {
+        "source_origin": "tencent-rtc-chat",
+        "callback_command": command,
+        "from_account": from_account,
+        "msg_id": msg_id,
+        "payload": payload,
+        "received_at": time.time(),
+    }
+    # --- 5T: Trustworthy (Hash Lock + Object.freeze equivalent) ---
+    locked = gate5t.lock_artifact(artifact)
+    job = db.create_job(source=msg_id, title=f"TRTC:{command}", result=json.dumps(locked))
+    return {"status": "stored", "msg_id": msg_id, "job_id": job["job_id"], "ok": True}
 
 
 @app.get("/api/jobs/{job_id}/video")
