@@ -64,6 +64,20 @@ def _oci(cmd: list[str], timeout: int = 30) -> dict:
         return {"raw": proc.stdout.strip()}
 
 
+def _resolve_instance_id(name: str) -> str:
+    """Resolve display-name to OCID."""
+    data = _oci([
+        "compute", "instance", "list",
+        "--compartment-id", COMPARTMENT,
+        "--region", REGION,
+        "--output", "json",
+    ])
+    for item in data.get("data", []):
+        if item.get("display-name") == name:
+            return item["id"]
+    raise HTTPException(404, f"instance not found: {name}")
+
+
 # ---- models ----
 class InstanceInfo(BaseModel):
     name: str
@@ -94,8 +108,7 @@ def list_instances() -> list[InstanceInfo]:
     """Traceable: list all compute instances in compartment."""
     data = _oci([
         "compute", "instance", "list",
-        "--compartment-id", COMPARTMENT,
-        "--region", REGION,
+                "--region", REGION,
         "--output", "json",
     ])
     out = []
@@ -119,11 +132,11 @@ def list_instances() -> list[InstanceInfo]:
 @router.get("/instances/{name}", response_model=InstanceInfo)
 def get_instance(name: str) -> InstanceInfo:
     """Trackable: get single instance details."""
+    instance_id = _resolve_instance_id(name)
     data = _oci([
         "compute", "instance", "get",
-        "--compartment-id", COMPARTMENT,
         "--region", REGION,
-        "--instance-name", name,
+        "--instance-id", instance_id,
         "--output", "json",
     ])
     item = data.get("data", {})
@@ -142,11 +155,12 @@ def get_instance(name: str) -> InstanceInfo:
 @router.post("/instances/{name}/start", response_model=ActionResponse)
 def start_instance(name: str) -> ActionResponse:
     """Start a stopped instance."""
+    instance_id = _resolve_instance_id(name)
     _oci([
-        "compute", "instance", "action", "start",
-        "--compartment-id", COMPARTMENT,
+        "compute", "instance", "action",
+        "--instance-id", instance_id,
+        "--action", "START",
         "--region", REGION,
-        "--instance-name", name,
     ])
     _log_op("start", name, "ok")
     return ActionResponse(
@@ -159,11 +173,12 @@ def start_instance(name: str) -> ActionResponse:
 def stop_instance(name: str, body: ActionRequest | None = None) -> ActionResponse:
     """Stop an instance (preserve boot volume by default)."""
     preserve = True if body is None else body.preserve_boot_volume
+    instance_id = _resolve_instance_id(name)
     cmd = [
-        "compute", "instance", "action", "stop",
-        "--compartment-id", COMPARTMENT,
+        "compute", "instance", "action",
+        "--instance-id", instance_id,
+        "--action", "STOP",
         "--region", REGION,
-        "--instance-name", name,
     ]
     if preserve:
         cmd += ["--preserve-boot-volume", "true"]
