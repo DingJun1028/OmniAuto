@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 router = APIRouter(prefix="/oci", tags=["oci"])
 
 # ---- config ----
-OCI_BIN = "/home/ubuntu/bin/oci"
+OCI_BIN = "/home/ubuntu/bin/oci-env"
 COMPARTMENT = "ocid1.tenancy.oc1..aaaaaaaadof5rgb76zexk24q6fnhopqjnrqaxwmeuxunoynw46g3lj3lfnlq"
 REGION = "ap-singapore-1"
 INSTANCES_FILE = Path("/tmp/oci_instances_cache.json")
