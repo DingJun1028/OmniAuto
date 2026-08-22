@@ -28,6 +28,7 @@
 ## 4. 效能 / Performance
 - ✅ **`gradient_frame` 雙層 for-loop 像素賦值**：改用 numpy 對角 blend（720p 毫秒級）。
 - ✅ **同步阻塞**：`POST /api/jobs` 改為立即回傳 `queued` + job_id，渲染走背景 `ThreadPoolExecutor`；`/api/jobs/{id}` 輪詢。Webhook 維持同步（n8n 等待結果）。
+- ✅ **§12 增量輸出優化**：新增 `src/incremental.py` — Chunked Processing + StreamBuffer + Parallel Workers + Delta Sync + gzip Compression + CDN Cache 元語 + 分頁；6 個 5T 合規模式（EventBus/ServiceOrchestrator/ETLPipeline/APIGateway/CacheManager/ErrorHandler）全數複用 `gate5t` 單一真相源，free-local 無雲端依賴。
 
 ## 5. 可擴充性 / Extensibility
 - ✅ **Docker Hub 自動推映像**：CI 已接好並實際推送 `docker.io/dingjunhong1028/aistation:latest`（已驗證 `DOCKERHUB_USERNAME`+`DOCKERHUB_TOKEN` 生效，latest tag 已更新）。
@@ -42,10 +43,12 @@
 - ✅ **失敗 video_url 為 None 時處理**：webhook 回傳新增 `ok` 旗標（`status==done` 且有 `video_url` 才 True），`video_url=None` 時 `ok=False` 且 `error` 回填；n8n 呼叫方可直接 `if (body.ok)` 分支，不再依賴 None 判斷。新增 `test_webhook_ok_flag_reflects_video` 回歸。
 
 ## 7. 測試 / Testing
-- ✅ **pytest 29 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook/metrics**（CI 綠燈）。
+- ✅ **pytest 50 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook/metrics/incremental**（CI 綠燈；2 ffmpeg E2E 在無 ffmpeg 環境自動 skip）。
 - ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
 - ✅ **測試不污染真實狀態**：render 類測試加 `isolated_state` fixture，把 `jobs.db` + `STORAGE_DIR` 導向 tmp（不再寫入 repo 根目錄）。
 - ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback / submit 失敗 單元測試已加**。
+- ✅ **§12 增量優化 21 測項全過**：`tests/test_incremental.py` 覆蓋 StreamBuffer/WorkerPool/DeltaTracker/CompressionEngine/LRUCache/paginate + 六模式 5T 驗證閘；全 suite 50 passed（2 ffmpeg skip）。
 
 ---
-下一步建議優先序：真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）。其餘 ①②③④⑤⑥⑦ 已修。
+
+下一步建議優先序：真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）。其餘 ①②③④⑤⑥⑦ 已修 + §12 增量優化已落地。
