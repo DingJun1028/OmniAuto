@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<!--
+  universal-translator · 一體式懸浮字幕條 (SCAFFOLD)
+  ------------------------------------------------------------------
+  本檔為根據使用者貼文碎片重構的「結構骨架」：
+  - CSS 語法錯誤已修正 (box-sizing:border-box / user-select / #080d14 / gap 補值)
+  - 類別結構來自貼文可見部分: .bg-grid #bar .toolbar .btn .btn.blue/.gold
+    .badge-live .pill-lang .drawer .sub-box .sub-cap .sub-trans .dot .hidden
+  - ⚠ 真實 JS 邏輯 (startSys / QR 綁定 / 字幕串流 / PiP 置頂) 為佔位 TODO，
+    須由使用者本機完整原始檔補齊，本 scaffold 不冒充「已修好的真檔」。
+-->
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>萬能即時翻譯 · 一體式懸浮字幕條</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang TC", "Microsoft JhengHei", sans-serif;
+  background: #090d13; color: #fff; min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+}
+.bg-grid {
+  position: absolute; width: 100vw; height: 100vh;
+  background: radial-gradient(circle at 50% 35%, #17202c 0%, #080d14 100%);
+  pointer-events: none;
+}
+#bar {
+  position: fixed; top: 32px; width: 94%; max-width: 1020px;
+  background: rgba(22, 27, 34, 0.94); backdrop-filter: blur(24px);
+  border: 1px solid rgba(255,255,255,0.16); border-radius: 20px;
+  padding: 14px 22px; box-shadow: 0 24px 50px rgba(0,0,0,0.8);
+  z-index: 999999; display: flex; flex-direction: column; gap: 12px;
+}
+.toolbar { display: flex; justify-content: space-between; align-items: center; }
+.left, .right { display: flex; align-items: center; gap: 10px; }
+.btn {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+  color: #fff; padding: 6px 14px; border-radius: 10px; cursor: pointer;
+  font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px;
+}
+.btn:hover { background: rgba(255,255,255,0.18); }
+.btn.blue { background: #1f6feb; border: none; }
+.btn.gold { background: #c9a24b; color: #000; font-weight: bold; border: none; }
+.badge-live {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(48, 81, 73, 0.15); border: 1px solid rgba(248, 81, 73, 0.4);
+  border-radius: 20px; padding: 5px 14px; color: #ff7b72;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.dot {
+  width: 8px; height: 8px; background: #f85149; border-radius: 50%;
+  box-shadow: 0 0 8px #f85149;
+}
+.pill-lang {
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 20px; padding: 5px 18px; font-size: 13px; font-weight: 600; color: #e6edf3;
+}
+.drawer {
+  background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.sub-box { display: flex; flex-direction: column; gap: 6px; }
+.sub-cap { font-size: 18px; font-weight: 700; color: #ffffff; line-height: 1.4; word-break: break-word; }
+.sub-trans { font-size: 21px; font-weight: 700; color: #ffd875; line-height: 1.45; word-break: break-word; }
+.hidden { display: none !important; }
+#qrcode { background: #fff; padding: 6px; border-radius: 10px; }
+</style>
+</head>
+<body>
+<div class="bg-grid"></div>
+<div id="bar">
+  <div class="toolbar">
+    <div class="left">
+      <button class="btn blue" onclick="startSys()">
+        <input type="checkbox" id="chk-sys" checked style="pointer-events:none; margin-right:4px;">
+        🎙 系統音 (Zoom/YouTube)
+      </button>
+      <span class="pill-lang" id="pill-lang">原文 <span>→</span> 繁體中文</span>
+    </div>
+    <div class="right">
+      <span class="badge-live" id="badge-live" onclick="toggleLive()"><span class="dot"></span> LIVE</span>
+      <div id="qrcode"></div>
+    </div>
+  </div>
+  <div class="drawer">
+    <div class="sub-box">
+      <div class="sub-cap" id="sub-cap">— 等待來源語音 / 文字 —</div>
+      <div class="sub-trans" id="sub-trans">— 翻譯將顯示於此 —</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ⚠ TODO: 以下為佔位邏輯，須由使用者本機完整原始檔補齊真實實作。
+// 1) startSys(): 啟用系統音擷取 (Web Audio / getUserMedia / 視窗音訊擷取)
+// 2) toggleLive(): LIVE 指示燈開關
+// 3) QR 綁定: QRCode.toCanvas(document.getElementById('qrcode'), '<觀眾端同步 URL>')
+// 4) 字幕串流: 來源文字 → 翻譯 API (本地 Ollama / Edge-TTS) → 更新 #sub-cap / #sub-trans
+// 5) PiP 置頂: 將 #bar 送進 Picture-in-Picture 或原生置頂 (cross-window)
+function startSys() {
+  const on = document.getElementById('chk-sys').checked;
+  console.log('[universal-translator] system-audio toggle =', on);
+  // TODO: 接續真實擷取管線
+}
+function toggleLive() {
+  const b = document.getElementById('badge-live');
+  b.classList.toggle('hidden');
+  // TODO: 接續真實 LIVE 狀態切換
+}
+// TODO: QRCode.toCanvas(document.getElementById('qrcode'), location.href);
+</script>
+</body>
+</html>
