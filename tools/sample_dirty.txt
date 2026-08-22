@@ -1,0 +1,14 @@
+載入個人與系統設定檔花了 2277 毫秒。
+PS C:\Users\dingj> ssh -o StrictHostKeyChecking=accept-new esggo-vps "journalctl -u cloudflared -n 25 --no-pager; sudo nginx -t; sudo systemctl status nginx --no-pager"
+Aug 22 23:39:21 esggo-vps cloudflared[3762237]: 2026-08-22T23:39:21Z ERR Request failed error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp 127.0.0.1:8421: connect: connection refused" connIndex=2 dest=https://gateway.esggo.co/sync/stream event=0 ip=198.41.200.23 type=http
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+● nginx.service - A high performance web server and a reverse proxy server
+     Loaded: loaded (/usr/lib/systemd/system/nginx.service; enabled; preset: enabled)
+     Active: active (running) since Thu 2026-08-20 06:00:32 UTC; 2 days ago
+Aug : 無法辨識 'Aug' 詞彙是否為 Cmdlet、函數、指令檔或可執行程式的名稱。請檢查名稱拼字是否正確，如果包含路徑的話，請確認路徑是否正確，然後再試一次。
+PS C:\Users\dingj> Aug 22 23:39:22 esggo-vps cloudflared[3762237]: 2026-08-22T23:39:22Z ERR  error="Unable to reach the origin service. The service may be down or it may not be responding to traffic from cloudflared: dial tcp 127.0.0.1:8421: connect: connection refused" connIndex=2 event=1 ingressRule=6 originService=http://127.0.0.1:8421
+nginx: : 無法辨識 'nginx:' 詞彙是否為 Cmdlet、函數、指令檔或可執行程式的名稱。請檢查名稱拼字是否正確，如果包含路徑的話，請確認路徑是否正確，然後再試一次。
+PS C:\Users\dingj> Aug 20 12:56:41 esggo-vps nginx[389628]: 2026/08/20 12:56:41 [emerg] 389628#389628: invalid number of arguments in "proxy_set_header" directive in /etc/nginx/sites-enabled/oa.esggo.co.conf:8
+              ├─1563021 "nginx: worker process"
+PS C:\Users\dingj>
