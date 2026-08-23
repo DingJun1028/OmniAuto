@@ -1,0 +1,99 @@
+{
+  "name": "OA-Team Weekly Swarm Report (v2: entropy-first)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "weeks", "weeksInterval": 1 },
+            { "field": "weekdays", "weekdays": [1] },
+            { "field": "hours", "hoursInterval": 9 }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "每週一 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/aistation && python scripts/audit_5t.py --json",
+        "env": {
+          "OA_ENTROPY_TARGET": "0.1"
+        }
+      },
+      "id": "audit",
+      "name": "5T 稽核 + 熵測",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1.1,
+      "position": [520, 200],
+      "continueOnFail": false
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/aistation && python scripts/weekly_report.py --dry-run --pairing {{ $parse(audit.output, 'json').pairing_pct }} --entropy {{ $parse(audit.output, 'json').entropy }} --security {{ $parse(audit.output, 'json').security_events }}",
+        "env": {
+          "TELEGRAM_BOT_TOKEN": "={{ $env.TELEGRAM_BOT_TOKEN }}",
+          "TELEGRAM_CHAT_ID": "={{ $env.TELEGRAM_CHAT_ID }}",
+          "TELEGRAM_THREAD_ID": "={{ $env.TELEGRAM_THREAD_ID }}",
+          "SLACK_WEBHOOK_URL": "={{ $env.SLACK_WEBHOOK_URL }}",
+          "NEWSLETTER_EMAIL_TO": "={{ $env.NEWSLETTER_EMAIL_TO }}"
+        }
+      },
+      "id": "exec",
+      "name": "生成並發送週報",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1.1,
+      "position": [800, 200],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "rules": [
+            {
+              "value1": "={{ $json.entropy }}",
+              "operation": "larger",
+              "value2": "0.05"
+            }
+          ]
+        }
+      },
+      "id": "check_warn",
+      "name": "Entropy WARN?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1070, 100]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "⚠️ **Entropy WARN** — {{ $json.entropy }} exceeds 0.05 threshold\n{{ $json.stdout }}\nPairing={{audit.output.pairing_pct}} Entropy={{audit.output.entropy}}"
+      },
+      "id": "alert",
+      "name": "Telegram Alert (WARN)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 2,
+      "position": [1330, 100]
+    }
+  ],
+  "connections": {
+    "每週一 09:00": {
+      "main": [[{ "node": "5T 稽核 + 熵測", "type": "main", "index": 0 }]]
+    },
+    "5T 稽核 + 熵測": {
+      "main": [[{ "node": "Entropy WARN?", "type": "main", "index": 0 }]]
+    },
+    "Entropy WARN?": {
+      "main": [
+        [{ "node": "Telegram Alert (WARN)", "type": "main", "index": 0 }],
+        [{ "node": "生成並發送週報", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "templateId": "oa-team-weekly-swarm-report-v2", "version": "2.0.0" }
+}
