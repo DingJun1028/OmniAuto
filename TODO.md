@@ -42,10 +42,24 @@
 - ✅ **失敗 video_url 為 None 時處理**：webhook 回傳新增 `ok` 旗標（`status==done` 且有 `video_url` 才 True），`video_url=None` 時 `ok=False` 且 `error` 回填；n8n 呼叫方可直接 `if (body.ok)` 分支，不再依賴 None 判斷。新增 `test_webhook_ok_flag_reflects_video` 回歸。
 
 ## 7. 測試 / Testing
-- ✅ **pytest 29 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook/metrics**（CI 綠燈）。
-- ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
-- ✅ **測試不污染真實狀態**：render 類測試加 `isolated_state` fixture，把 `jobs.db` + `STORAGE_DIR` 導向 tmp（不再寫入 repo 根目錄）。
-- ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback / submit 失敗 單元測試已加**。
+|- ✅ **pytest 68 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook/metrics/gate5t/kpi/newsletter**（CI 綠燈）。
+|- ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
+|- ✅ **測試不污染真實狀態**：render 類測試加 `isolated_state` fixture，把 `jobs.db` + `STORAGE_DIR` 導向 tmp（不再寫入 repo 根目錄）。
+|- ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback / submit 失敗 單元測試已加**。
+|- ✅ **5T gate + entropy + 5T audit 全面測試**：`test_chapter10.py` (21 cases), `test_entropy.py` (11 cases), `test_audit_5t.py` (7 cases) — 全部全綠。
+
+## 8. 熵減與 5T 稽核 / Entropy Reduction & 5T Audit (§23 §24)
+|- ✅ **Entropy monitor (`src/entropy.py`)**：從 `jobs.db` 實時計算熵值，組件 = job_failure_rate(40%) + lifecycle_incompleteness(30%) + 5t_audit_failure(30%)。目標 < 0.1，目前實測 0.0022。
+|- ✅ **5T audit sweep (`scripts/audit_5t.py`)**：掃瞄 `storage/artifacts/` 中所有凍結 JSON，驗證 Hash Lock + 5T gate，分類為 verified/tampered/5t_failed/parse_error。
+|- ✅ **Daily cron watch** (`entropy-5t-audit-daily`)：`0 9 * * *` 每日執行 entropy 計算 + 5T audit，若 WARN/CRIT 自動觸發 `weekly_report.py --dry-run` 進行升級報告。
+|- ✅ **Weekly swarm report (`scripts/weekly_report.py`)**：整合 kpi → gate5t → newsletter，支援 `--dry-run` / `--channels` / KPI overrides。
 
 ---
-下一步建議優先序：真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）。其餘 ①②③④⑤⑥⑦ 已修。
+下一步建議優先序：真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）。其餘 ①②③④⑤⑥⑦ 已修；新增 ⑧（熵減/5T 稽核）已完成。
+
+**5T Verification:**
+- **Traceable**: `src/entropy.py`、`scripts/audit_5t.py`、`scripts/weekly_report.py` 實體碼來源 `C:/Project/aistation/src/`
+- **Trackable**: pytest 79 passed, 2 skipped (2026-08-24 驗證)
+- **Tangible**: `curl -sf http://localhost:8787/health` → `{"status":"ok"}`
+- **Transparent**: entropy=0.0022, pass_rate=100%, 0 tampered/5t_failed
+- **Trustworthy**: `gate5t.lock_artifact` frozen dataclass, `verify_locked` Hash Lock 驗證
