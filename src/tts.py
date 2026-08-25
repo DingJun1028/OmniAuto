@@ -1,15 +1,24 @@
 """Module 3 — Speech engine (TTS).
 
 Default: Microsoft edge-tts (free, no API key, multi-language). If
-ELEVENLABS_API_KEY is set, ElevenLabs is used instead. If the network
-TTS endpoint is unreachable, we transparently fall back to a generated
-silent audio track so the pipeline still produces a real MP4.
+ELEVENLABS_API_KEY is set, ElevenLabs is used instead. If AZURE_VOICE is set,
+edge-tts uses that Azure neural voice directly (no REST key needed — edge-tts
+speaks the voice natively, this is what "Azure TTS V1" means in MoneyPrinterTurbo).
+
+If the configured engine is unreachable, we transparently fall back to a
+generated silent audio track so the pipeline still produces a real MP4.
 
 Each synthesize() call returns a tuple:
     (audio_path, boundaries, is_silent)
 where `boundaries` is a list of word-level timings:
     {"start": float_seconds, "end": float_seconds, "text": str}
 These are consumed by the renderer to burn synced captions (IDEA.md 5).
+
+MoneyPrinterTurbo compatibility:
+- synthesize_with_voice() accepts an explicit `voice` param so the MPT UI can
+  override AZURE_VOICE / EDGE_VOICE at submission time.
+- style_name + style_text are forwarded to edge-tts for Azure voices that
+  support them (e.g., zh-CN-XiaoxiaoNeural with "sad" style).
 """
 from __future__ import annotations
 
@@ -21,11 +30,14 @@ from .config import (
     ELEVENLABS_API_KEY,
     ELEVENLABS_VOICE_ID,
     USE_ELEVENLABS,
+    AZURE_VOICE,
+    AZURE_VOICE_STYLE,
+    AZURE_STYLE_TEXT,
+    USE_AZURE,
+    EDGE_VOICE,
+    EDGE_VOICE_EN,
     log,
 )
-
-# A pleasant multilingual voice that works across EN / ZH / JA on edge-tts.
-EDGE_VOICE = "zh-TW-HsiaoChenNeural"  # swap to en-US-AriaNeural etc. if preferred
 
 # Rough speech rate for the offline fallback (chars per second).
 _CHARS_PER_SEC = 8
@@ -43,14 +55,43 @@ def _silent_audio(text: str, out_path: Path) -> Path:
     return out_path
 
 
-def _tts_edge(text: str, out_path: Path):
-    """Stream audio + capture word boundaries. Returns (Path, boundaries)."""
+def _detect_voice(text: str, voice: str | None) -> str:
+    """Pick a voice: explicit override > Azure configured > language heuristic.
+
+    If no voice is specified, we sniff the script for CJK characters and pick
+    the matching edge-tts neural voice automatically (same behaviour as MPT's
+    language auto-detection toggle).
+    """
+    if voice:
+        return voice
+    if USE_AZURE and AZURE_VOICE:
+        return AZURE_VOICE
+    # Auto-detect: if script contains CJK, use the Chinese voice; else English.
+    if any("\u4e00" <= c <= "\u9fff" for c in text):
+        return EDGE_VOICE  # zh-TW-HsiaoChenNeural by default
+    return EDGE_VOICE_EN
+
+
+def _tts_edge(text: str, out_path: Path, voice: str | None = None,
+              style_name: str | None = None, style_text: str | None = None):
+    """Stream audio + capture word boundaries via edge-tts.
+
+    Returns (Path, boundaries). For Azure voices that support style, passes
+    style_name and style_text through to edge-tts's `Communicate`.
+    """
     import edge_tts
 
     boundaries: list[dict] = []
+    chosen_voice = _detect_voice(text, voice)
 
     async def run():
-        comm = edge_tts.Communicate(text, EDGE_VOICE, boundary="WordBoundary")
+        kwargs = {"voice": chosen_voice, "boundary": "WordBoundary"}
+        comm = edge_tts.Communicate(text, **kwargs)
+
+        # For Azure neural voices that support style, inject style params.
+        if style_name:
+            comm.configure_style(style_name, style_text or "")
+
         with open(out_path, "wb") as f:
             async for chunk in comm.stream():
                 if chunk["type"] == "audio":
@@ -88,13 +129,27 @@ def synthesize(text: str, out_path: Path):
     Tries the configured engine; on any failure, falls back to a silent
     audio track (empty boundaries) so rendering still completes.
     """
+    return synthesize_with_voice(text, out_path)
+
+
+def synthesize_with_voice(text: str, out_path: Path, voice: str | None = None,
+                          style_name: str | None = None,
+                          style_text: str | None = None):
+    """Like synthesize() but accepts an explicit voice override.
+
+    This is the entry point MoneyPrinterTurbo webhook payloads use to pass
+    the user's chosen voice (e.g., "zh-TW-HsiaoChenNeural").
+    """
     try:
         if USE_ELEVENLABS:
             log.info("tts: using elevenlabs")
             path, bounds = _tts_elevenlabs(text, out_path)
         else:
-            log.info("tts: using edge-tts (free)")
-            path, bounds = _tts_edge(text, out_path)
+            log.info("tts: using edge-tts (free) voice=%s",
+                     _detect_voice(text, voice))
+            path, bounds = _tts_edge(text, out_path, voice=voice,
+                                     style_name=style_name or AZURE_VOICE_STYLE,
+                                     style_text=style_text or AZURE_STYLE_TEXT)
         return path, bounds, False
     except Exception as e:
         log.warning("tts: engine failed (%s); falling back to silent track", e)

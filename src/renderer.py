@@ -18,7 +18,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH, FONT_PATH, log
+from .config import VIDEO_FPS, VIDEO_HEIGHT, VIDEO_WIDTH, FONT_PATH, KEN_BURNS_ZOOM, log
 
 # Caption font for ffmpeg drawtext — reuse the single resolved CJK font.
 # drawtext needs a POSIX-style path with ':' escaped (ffmpeg filter syntax).
@@ -98,7 +98,7 @@ def render_shot_clip(media: Path, is_video: bool, audio: Path, out_clip: Path,
             f"format=yuv420p"
         )
     else:
-        zoom = 1.08 + (idx % 3) * 0.04
+        zoom = KEN_BURNS_ZOOM + (idx % 3) * 0.04
         base_vf = (
             f"scale={VIDEO_WIDTH*2}:{VIDEO_HEIGHT*2},"
             f"zoompan=z='min({zoom},1.5)':d=1:x='iw/2':y='ih/2':"
@@ -116,7 +116,7 @@ def render_shot_clip(media: Path, is_video: bool, audio: Path, out_clip: Path,
         *media_input,
         "-i", str(audio), "-c:v", "libx264", "-pix_fmt", "yuv420p",
         "-vf", vf,
-        "-c:a", "aac", "-b:a", "192k",
+        "-c:a", "aac", "-ar", "48000", "-b:a", "192k",
         "-t", f"{dur:.2f}", "-shortest", str(out_clip),
     ]
     subprocess.run(cmd, capture_output=True, text=True, check=True)
@@ -152,9 +152,9 @@ def make_brand_intro(preset: str = "sushi_dr", out: Path | None = None) -> Path:
         img.save(tmp)
         cmd = [
             "ffmpeg", "-y", "-loop", "1", "-i", tmp,
-            "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+            "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
             "-t", "2.4", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-c:a", "aac", "-shortest", str(out),
+            "-c:a", "aac", "-ar", "48000", "-shortest", str(out),
         ]
         subprocess.run(cmd, capture_output=True, text=True, check=True)
     finally:
@@ -193,7 +193,7 @@ def render_final(shot_clips: list[Path], video_out: Path,
         f"{concat}concat=n={n}:v=1:a=1[outv][outa]",
         "-map", "[outv]", "-map", "[outa]",
         "-c:v", "libx264", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+        "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-movflags", "+faststart",
         str(video_out),
     ]
     subprocess.run(cmd, capture_output=True, text=True, check=True)

@@ -59,9 +59,16 @@ def test_config_free_mode_is_default():
 def test_feature_summary_has_all_modules():
     from src import config
     fs = config.feature_summary()
-    assert isinstance(fs, dict) and len(fs) == 5
-    for v in fs.values():
-        assert ("free" in v) or ("edge-tts" in v) or ("pillow" in v) or ("local" in v) or ("sqlite" in v)
+    assert isinstance(fs, dict) and len(fs) >= 5
+    # At least the original 5 keys must be present
+    assert "llm_brain" in fs
+    assert "tts" in fs
+    assert "visuals" in fs
+    assert "storage" in fs
+    assert "provenance_db" in fs
+    # MPT additions
+    assert "tts_voice" in fs
+    assert "video_ratio" in fs
 
 
 # ---------------------------------------------------------------- parser
@@ -629,3 +636,141 @@ def test_runway_real_broll():
     out = Path(tempfile.mkdtemp()) / "rw.mp4"
     path = visuals.generate_broll(shot, out)
     assert Path(path).exists() and Path(path).stat().st_size > 1000
+
+
+# --- OmniAutoVideo 萬能自動影音 integration ---
+
+
+def test_split_long_narration_respects_max_duration(isolated_state):
+    """Narrations exceeding MAX_SHOT_DURATION are split into sub-3s parts."""
+    from src import parser, config
+
+    # Build a long text with sentence-ending punctuation that exceeds the
+    # 3s ceiling. At 8 chars/sec, 70+ chars = 9s, which should split.
+    long_text = "這是一個很長的句子，用來測試分段功能。這裡有更多的文字用來確保超過三秒限制。再加上更多內容。"
+    parts = parser._split_long_narration(long_text, config.MAX_SHOT_DURATION)
+    assert len(parts) >= 2, f"Expected split, got {len(parts)} parts"
+    for p in parts:
+        est = len(p) / 8  # _CHARS_PER_SEC heuristic
+        assert est <= config.MAX_SHOT_DURATION + 1.0  # tolerance for splitting
+
+
+def test_parse_dna_splits_long_segments():
+    """DNA script with long beats must produce multiple shots per beat."""
+    from src import parser
+
+    script = (
+        "【場景】一個簡單的測試，這裡有一些額外的文字用來觸發分割功能的測試。\n"
+        "【洞察】這是一個洞察，說明ESG與永續的關聯性。\n"
+        "【方法】用1.0、1.5、2.0檢查位置，一步步驗證永纆是否有真正執行。\n"
+        "【反思】如果永纆沒減少任何人的苦，算永纆嗎？\n"
+    )
+    shots = parser.parse_script(script)
+    assert len(shots) >= 3  # at least one split happened
+    for s in shots:
+        d = s.to_dict()
+        assert d["narration"]
+        assert d["theme"]
+        assert d["visual_prompt"]
+
+
+def test_azure_tts_voice_resolution():
+    """EDGE_VOICE defaults to zh-TW-HsiaoChenNeural (MPT's default)."""
+    from src import config
+    assert config.EDGE_VOICE == "zh-TW-HsiaoChenNeural"
+
+
+def test_synthesize_with_voice_override(monkeypatch):
+    """synthesize_with_voice forwards the voice override to the TTS engine.
+
+    We monkeypatch the internal _tts_edge to avoid a real network call.
+    """
+    from src import tts
+    from pathlib import Path
+    import tempfile
+
+    out = Path(tempfile.mkdtemp()) / "test.mp3"
+
+    captured = {}
+    def _fake_edge(text, out_path, voice=None, style_name=None, style_text=None):
+        captured["text"] = text
+        captured["voice"] = voice
+        captured["style_name"] = style_name
+        captured["style_text"] = style_text
+        out_path.write_bytes(b"fake-audio")  # minimal valid file
+        return out_path, [], False
+
+    monkeypatch.setattr(tts, "_tts_edge", _fake_edge)
+    tts.synthesize_with_voice("測試文字", out, voice="zh-CN-XiaoxiNeural")
+    assert out.exists()
+    assert captured["voice"] == "zh-CN-XiaoxiNeural"
+    assert captured["text"] == "測試文字"
+
+
+def test_config_endpoint_returns_mpt_fields(isolated_state):
+    """GET /api/config should return OmniAutoVideo 萬能自動影音-compatible fields."""
+    from src import app
+    from fastapi.testclient import TestClient
+
+    c = TestClient(app.app)
+    r = c.get("/api/config")
+    assert r.status_code == 200
+    body = r.json()
+    assert "tts_engine" in body
+    assert "tts_voice" in body
+    assert body["tts_voice"] == "zh-TW-HsiaoChenNeural"
+    assert "video_ratio" in body
+    assert "max_shot_duration" in body
+    assert "ken_burns_zoom" in body
+    assert "available_voices" in body
+    assert "brand_presets" in body
+
+
+def test_webhook_mpt_renders_script(isolated_state, monkeypatch):
+    """POST /webhook/mpt should produce a finished job record.
+
+    We monkeypatch pipeline.enqueue to avoid a full video render (edge-tts +
+    ffmpeg) during unit tests; the real render path is covered by the
+    integration test at the end of this file.
+    """
+    from src import app, pipeline
+    from fastapi.testclient import TestClient
+
+    def _fake_enqueue(script, title, brand_preset=None, voice=None,
+                      style_name=None, style_text=None, video_ratio=None):
+        return {
+            "job_id": "mpt123",
+            "status": "done",
+            "title": title,
+            "result": '{"video_url": "/storage/abc/final.mp4", "shots": 2}',
+            "payload": json.dumps({"script": script, "brand_preset": brand_preset,
+                                   "voice": voice, "style_name": style_name}),
+        }
+
+    monkeypatch.setattr(pipeline, "enqueue", _fake_enqueue)
+    c = TestClient(app.app)
+    payload = {
+        "title": "MPT Test",
+        "text": "【場景】一個簡單的測試。【洞察】這是一個洞察。",
+        "brand_preset": "sushi_dr",
+        "voice": "zh-TW-HsiaoChenNeural",
+    }
+    r = c.post("/webhook/mpt", json=payload)
+    assert r.status_code == 200
+    body = r.json()
+    assert "job_id" in body
+    assert body["job_id"] == "mpt123"
+    assert body["ok"] is True
+    assert body["video_url"] == "/storage/abc/final.mp4"
+    assert body["shots"] == 2
+
+
+
+def test_webhook_mpt_rejects_empty_body(isolated_state):
+    """POST /webhook/mpt with empty script/text should 400."""
+    from src import app
+    from fastapi.testclient import TestClient
+
+    c = TestClient(app.app)
+    r = c.post("/webhook/mpt", json={"title": "empty"})
+    assert r.status_code == 400

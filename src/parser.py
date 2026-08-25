@@ -53,10 +53,52 @@ class Shot:
         return d
 
 
+_CHARS_PER_SEC = 8  # module-level constant for duration estimation
+
+
 def _split_sentences(text: str) -> list[str]:
     text = re.sub(r"\s+", " ", text.strip())
     parts = re.split(r"(?<=[。.!?！？])\s*", text)
     return [p.strip() for p in parts if p.strip()]
+
+
+def _split_long_narration(narration: str, max_duration: float = None) -> list[str]:
+    """Split a narration into sub-segments no longer than max_duration (seconds).
+
+    Uses the standard heuristic of ~8 chars/sec for edge-tts speech. If
+    max_duration is None, reads from config.MAX_SHOT_DURATION (default 3s,
+    matching OmniAutoVideo 萬能自動影音's per-clip ceiling).
+
+    Returns sub-segments split on the natural sentence/pause boundaries so
+    each downstream clip stays within MPT's 3-second limit.
+    """
+    from .config import MAX_SHOT_DURATION
+    threshold = max_duration if max_duration is not None else MAX_SHOT_DURATION
+
+    sentences = _split_sentences(narration)
+    if not sentences:
+        sentences = [narration]
+
+    parts: list[str] = []
+    for sent in sentences:
+        # If a single sentence is too long, hard-split on word boundaries.
+        chars = len(sent)
+        est_dur = chars / _CHARS_PER_SEC
+        if est_dur <= threshold:
+            parts.append(sent)
+        else:
+            words = sent.split()
+            chunk: list[str] = []
+            for w in words:
+                test = " ".join(chunk + [w]) if chunk else w
+                if chunk and len(test) / _CHARS_PER_SEC > threshold:
+                    parts.append(" ".join(chunk))
+                    chunk = [w]
+                else:
+                    chunk.append(w)
+            if chunk:
+                parts.append(" ".join(chunk))
+    return parts or [narration]
 
 
 def _detect_theme(text: str) -> tuple:
@@ -68,6 +110,8 @@ def _detect_theme(text: str) -> tuple:
 
 
 def parse_free(script: str, shots_per_group: int = 2) -> list[Shot]:
+    from .config import MAX_SHOT_DURATION
+
     sentences = _split_sentences(script)
     if not sentences:
         sentences = [script]
@@ -76,17 +120,20 @@ def parse_free(script: str, shots_per_group: int = 2) -> list[Shot]:
     for i in range(0, len(sentences), shots_per_group):
         group = sentences[i : i + shots_per_group]
         narration = " ".join(group)
-        caption = group[0][:40]
-        prompt = f"Cinematic wide shot, {theme[2]} mood, soft light: {narration[:120]}"
-        shots.append(
-            Shot(
-                index=len(shots) + 1,
-                narration=narration,
-                visual_prompt=prompt,
-                caption=caption,
-                theme=theme,
+        # MPT compliance: split narrations exceeding MAX_SHOT_DURATION.
+        sub_narrations = _split_long_narration(narration, MAX_SHOT_DURATION)
+        for sub in sub_narrations:
+            caption = sub[:40]
+            prompt = f"Cinematic wide shot, {theme[2]} mood, soft light: {sub[:120]}"
+            shots.append(
+                Shot(
+                    index=len(shots) + 1,
+                    narration=sub,
+                    visual_prompt=prompt,
+                    caption=caption,
+                    theme=theme,
+                )
             )
-        )
     return shots
 
 
@@ -132,27 +179,33 @@ def parse_openai(script: str) -> list[Shot]:
 
 def parse_dna_script(script: str) -> list[Shot] | None:
     """If the script uses 壽司博士 DNA markers (【場景】【衝突】【洞察】【方法】【反思】),
-    produce one on-brand shot per beat. Returns None when no markers are found."""
+    produce one on-brand shot per beat. Returns None when no markers are found.
+    """
+    from .config import MAX_SHOT_DURATION
+
     beats = brand.parse_dna(script)
     if not beats:
         return None
     shots: list[Shot] = []
     for label, text in beats:
         theme = brand.dna_palette(label)
-        caption = text[:40]
-        prompt = (
-            f"On-brand {theme[2]} visual for 壽司博士 Dr. Source: "
-            f"{text[:120]} — no neon, no robot-brain, no floating data clichés"
-        )
-        shots.append(
-            Shot(
-                index=len(shots) + 1,
-                narration=text,
-                visual_prompt=prompt,
-                caption=caption,
-                theme=theme,
+        # MPT compliance: split long segments into sub-3s shots.
+        sub_segments = _split_long_narration(text, MAX_SHOT_DURATION)
+        for sub in sub_segments:
+            caption = sub[:40]
+            prompt = (
+                f"On-brand {theme[2]} visual for 壽司博士 Dr. Source: "
+                f"{sub[:120]} — no neon, no robot-brain, no floating data clichés"
             )
-        )
+            shots.append(
+                Shot(
+                    index=len(shots) + 1,
+                    narration=sub,
+                    visual_prompt=prompt,
+                    caption=caption,
+                    theme=theme,
+                )
+            )
     return shots
 
 
