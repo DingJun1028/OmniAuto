@@ -19,6 +19,7 @@ import uuid
 import time
 
 from fastapi import FastAPI, HTTPException, Request, Depends
+from pydantic import BaseModel
 from fastapi.responses import FileResponse, HTMLResponse
 
 # Import types from the centralized type definitions
