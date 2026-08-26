@@ -1,0 +1,107 @@
+{
+  "name": "OA-Team Weekly Swarm Report (n8n cron bridge)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "weeks", "weeksInterval": 1 },
+            { "field": "weekdays", "weekdays": [1] },
+            { "field": "hours", "hoursInterval": 9 }
+          ]
+        }
+      },
+      "id": "schedule",
+      "name": "每週一 09:00 UTC 觸發",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /opt/esggo && pnpm oa:weekly-report --dry-run --pairing={{ $env.OA_PAIRING_PCT }} --entropy={{ $env.OA_ENTROPY }} --security={{ $env.OA_SECURITY_EVENTS }} --satisfaction={{ $env.OA_SATISFACTION }}",
+        "env": {
+          "OA_PAIRING_PCT": "={{ $env.OA_PAIRING_PCT }}",
+          "OA_ENTROPY": "={{ $env.OA_ENTROPY }}",
+          "OA_SECURITY_EVENTS": "={{ $env.OA_SECURITY_EVENTS }}",
+          "OA_SATISFACTION": "={{ $env.OA_SATISFACTION }}",
+          "TELEGRAM_BOT_TOKEN": "={{ $env.TELEGRAM_BOT_TOKEN }}",
+          "TELEGRAM_CHAT_ID": "={{ $env.TELEGRAM_CHAT_ID }}",
+          "TELEGRAM_THREAD_ID": "={{ $env.TELEGRAM_THREAD_ID }}",
+          "SLACK_WEBHOOK_URL": "={{ $env.SLACK_WEBHOOK_URL }}",
+          "NEWSLETTER_EMAIL_TO": "={{ $env.NEWSLETTER_EMAIL_TO }}"
+        }
+      },
+      "id": "exec",
+      "name": "生成週報 (esggo oa:weekly-report)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1.1,
+      "position": [520, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "rules": [
+            {
+              "value1": "={{ $json.returncode }}",
+              "operation": "notEqual",
+              "value2": "0"
+            }
+          ]
+        }
+      },
+      "id": "check_fail",
+      "name": "執行失敗？",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "🚨 **OA-Team 週報生成失敗**\n\n執行命令:\n```\n{{ $json.command }}\n```\n\n錯誤輸出:\n```\n{{ $json.stderr }}\n```\n\n請檢查 esggo VPS 部署狀態。"
+      },
+      "id": "alert",
+      "name": "Telegram Alert (失敗)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 2,
+      "position": [1070, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "=✅ **OA-Team 週報已發送**\n\n執行成功，週報已透過 Telegram/Slack/Email 分發。\n\n摘要:\n{{ $json.stdout }}"
+      },
+      "id": "success",
+      "name": "Telegram Success (成功)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 2,
+      "position": [1070, 400]
+    }
+  ],
+  "connections": {
+    "每週一 09:00 UTC 觸發": {
+      "main": [[{ "node": "生成週報 (esggo oa:weekly-report)", "type": "main", "index": 0 }]]
+    },
+    "生成週報 (esggo oa:weekly-report)": {
+      "main": [[{ "node": "執行失敗？", "type": "main", "index": 0 }]]
+    },
+    "執行失敗？": {
+      "main": [
+        [{ "node": "Telegram Alert (失敗)", "type": "main", "index": 0 }],
+        [{ "node": "Telegram Success (成功)", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "templateId": "oa-team-weekly-swarm-report-n8n",
+    "version": "1.0.0",
+    "description": "Bridges n8n cron schedule to esggo's oa:weekly-report CLI. Replaces Hermes cron as fallback when n8n is the primary scheduler. Aligns with soul.md §23.4 Newsletter Dispatch + §25 落地總結.",
+    "5t_aligned": true,
+    "source": "esggo",
+    "cross_repo": true
+  }
+}

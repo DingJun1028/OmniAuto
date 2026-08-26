@@ -184,3 +184,30 @@ def test_audit_json_output_format(isolated_state):
     assert "pass_rate" in result
     assert "details" in result
     assert "timestamp" in result
+
+
+def test_audit_with_entropy(isolated_state, monkeypatch):
+    """--with-entropy flag merges entropy data into audit JSON output."""
+    import subprocess
+    import sys as _sys
+    import os
+
+    art_dir = isolated_state / "artifacts"
+    art_dir.mkdir(exist_ok=True)
+    art = _make_valid_artifact("entropy_test")
+    (art_dir / "entropy_test.json").write_text(json.dumps(art), encoding="utf-8")
+
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(ROOT)
+
+    result = subprocess.run(
+        [_sys.executable, str(ROOT / "scripts" / "audit_5t.py"), "--json", "--with-entropy"],
+        capture_output=True, text=True, env=env,
+        check=False,
+        cwd=str(ROOT),
+    )
+    assert result.returncode == 0, f"stderr: {result.stderr}"
+    output = json.loads(result.stdout)
+    assert "entropy" in output
+    assert "entropy_status" in output
+    assert "entropy_components" in output

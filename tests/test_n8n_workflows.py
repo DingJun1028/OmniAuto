@@ -105,3 +105,52 @@ def test_ai_station_workflow_has_condition():
         for r in rule
     )
     assert found, "Must check $json.status"
+
+
+def test_weekly_swarm_report_n8n_workflow_valid():
+    """weekly-swarm-report.n8n.json bridges n8n cron to esggo oa:weekly-report CLI."""
+    wf = _load_workflow("weekly-swarm-report.n8n")
+    assert "name" in wf
+    assert "nodes" in wf
+    assert "connections" in wf
+    assert len(wf["nodes"]) >= 5  # schedule + exec + if + 2 telegram alerts
+
+
+def test_weekly_swarm_report_n8n_has_schedule_trigger():
+    """n8n workflow must have a weekly schedule trigger (Monday 09:00)."""
+    wf = _load_workflow("weekly-swarm-report.n8n")
+    schedule_nodes = [
+        n for n in wf["nodes"]
+        if n.get("type") == "n8n-nodes-base.scheduleTrigger"
+    ]
+    assert len(schedule_nodes) == 1
+    rule = schedule_nodes[0]["parameters"]["rule"]
+    intervals = rule["interval"]
+    assert any(i.get("weeksInterval") == 1 for i in intervals), "must run weekly"
+    assert any(i.get("weekdays") == [1] for i in intervals), "must run on Monday"
+
+
+def test_weekly_swarm_report_n8n_calls_esggo_cli():
+    """n8n workflow exec node must call esggo oa:weekly-report CLI."""
+    wf = _load_workflow("weekly-swarm-report.n8n")
+    exec_nodes = [
+        n for n in wf["nodes"]
+        if n.get("type") == "n8n-nodes-base.executeCommand"
+    ]
+    assert len(exec_nodes) == 1
+    assert "oa:weekly-report" in exec_nodes[0]["parameters"]["command"]
+
+
+def test_weekly_swarm_report_n8n_has_failure_alert():
+    """n8n workflow must have a if-condition + telegram failure alert."""
+    wf = _load_workflow("weekly-swarm-report.n8n")
+    if_nodes = [
+        n for n in wf["nodes"]
+        if n.get("type") == "n8n-nodes-base.if"
+    ]
+    assert len(if_nodes) == 1
+    telegram_nodes = [
+        n for n in wf["nodes"]
+        if n.get("type") == "n8n-nodes-base.telegram"
+    ]
+    assert len(telegram_nodes) >= 2  # success + failure alerts

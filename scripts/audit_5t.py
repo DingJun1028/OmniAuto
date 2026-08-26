@@ -144,9 +144,21 @@ def main() -> int:
                     help="remove tampered/failed artifacts after reporting")
     ap.add_argument("--json", action="store_true",
                     help="output machine-readable JSON")
+    ap.add_argument("--with-entropy", action="store_true",
+                    help="also compute current system entropy and merge into output")
     args = ap.parse_args()
 
     result = audit_artifacts()
+
+    if args.with_entropy:
+        try:
+            from src import entropy
+            ent = entropy.compute_entropy()
+            result["entropy"] = ent["entropy"]
+            result["entropy_status"] = ent["status"]
+            result["entropy_components"] = ent["components"]
+        except Exception as e:
+            log.warning("audit_5t: entropy computation failed: %s", e)
 
     if args.json:
         print(json.dumps(result, indent=2, ensure_ascii=False))
