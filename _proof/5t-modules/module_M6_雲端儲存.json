@@ -1,0 +1,111 @@
+{
+  "5T_Canon_Module_Proof": {
+    "5t_verification_gate_report": {
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      },
+      "errors": [],
+      "missing": [],
+      "passed": true
+    },
+    "component_core": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "889c577bb398e58f3cc3537cbadd4404b86358f6f395c59a42fafddf2d5bcef1",
+        "kind": "5T-Canon-Proof-M6-雲端儲存"
+      },
+      "hashLock": "889c577bb398e58f3cc3537cbadd4404b86358f6f395c59a42fafddf2d5bcef1",
+      "timestamp": 1788516838,
+      "uuid": "56612f57-abce-49a6-840e-f3713dc19fe3",
+      "version": "ESG GO v0.12"
+    },
+    "meta": {
+      "generated_at": "2026-09-04T10:13:58Z",
+      "module": {
+        "code_function": "publish",
+        "code_module": "storage",
+        "description": "Local /storage + OCI controller + S3 fallback via publish()",
+        "module_id": "M6",
+        "name": "雲端儲存",
+        "probe": {
+          "callable": true,
+          "function_exists": true,
+          "module_file": "C:\\Project\\aistation\\src\\storage.py",
+          "module_imported": true,
+          "module_sha256": "07cd30eed03b5a888da745dd0fcf961b6d7547c07add9dad39c6fd95413007d6"
+        }
+      },
+      "produced_by": "inclusionai/ling-3.0-flash-fin:free",
+      "protocol": "5T (Traceable·Trackable·Tangible·Transparent·Trustworthy)",
+      "system_version": "ESG GO v0.12 (InfoOne Core)"
+    },
+    "tangible": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "889c577bb398e58f3cc3537cbadd4404b86358f6f395c59a42fafddf2d5bcef1",
+        "kind": "5T-Canon-Proof-M6-雲端儲存"
+      },
+      "module_probe": {
+        "callable": true,
+        "function_exists": true,
+        "module_file": "C:\\Project\\aistation\\src\\storage.py",
+        "module_imported": true,
+        "module_sha256": "07cd30eed03b5a888da745dd0fcf961b6d7547c07add9dad39c6fd95413007d6"
+      },
+      "quality_gate": "PASSED"
+    },
+    "traceable": {
+      "evidence_chain": "Module probe → artifact → 5T gate → Hash Lock → 凍結",
+      "source_origin": "OA-Team-30-Swarm::AIStation::M6::storage::inclusionai/ling-3.0-flash-fin:free",
+      "sources": [
+        "OA-Team 30 Soul Canon §9.3 7 模組生產線",
+        "aistation/src/gate5t.py PurifiedArtifact",
+        "aistation/src/storage.py",
+        "Real probe: module imported=True",
+        "Real probe: function callable=True"
+      ],
+      "uuid": "56612f57-abce-49a6-840e-f3713dc19fe3"
+    },
+    "trackable": {
+      "iso_8601": "2026-09-04T10:13:58Z",
+      "lifecycle_hooks": [
+        "module_probe::M6",
+        "extract_essence",
+        "swarm_dispatch",
+        "5t_verification",
+        "hash_lock",
+        "freeze"
+      ],
+      "timestamp": 1788516838
+    },
+    "transparent": {
+      "algorithm_open": "src/storage.py",
+      "module_sha256": "07cd30eed03b5a888da745dd0fcf961b6d7547c07add9dad39c6fd95413007d6",
+      "transparent_audit": true,
+      "version": "ESG GO v0.12 (InfoOne Core)",
+      "zero_hallucination": "verified-via-real-probe"
+    },
+    "trustworthy": {
+      "frozen": true,
+      "hash_lock": "889c577bb398e58f3cc3537cbadd4404b86358f6f395c59a42fafddf2d5bcef1",
+      "immutable": true,
+      "object_freeze": "@dataclass(frozen=True)"
+    }
+  }
+}

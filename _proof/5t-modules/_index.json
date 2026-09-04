@@ -1,0 +1,81 @@
+{
+  "5T_Module_Proofs_Index": {
+    "all_passed": true,
+    "generated_at": "2026-09-04T10:13:58Z",
+    "modules": [
+      {
+        "5t_passed": true,
+        "function_exists": true,
+        "hash_lock": "787b41e7067e81b6a27867426791b3a0c5905d23e86795303f43e1236c8b2c8b",
+        "module_id": "M1",
+        "module_imported": true,
+        "module_sha256": "c6e58df5a6b41d4e0867e081fb80f365576a0da542edb54053187ce589401075",
+        "name": "編排中心",
+        "proof_file": "_proof/5t-modules/module_M1_編排中心.json"
+      },
+      {
+        "5t_passed": true,
+        "function_exists": true,
+        "hash_lock": "d9261b5e40ff25d1afbec579311c84443bcbec5bed84eeec9e6e8d42aebc3cf3",
+        "module_id": "M2",
+        "module_imported": true,
+        "module_sha256": "64d53d937e739c1b1670ccc7d15454d089e87c94623d8ec5036125b1b6c15750",
+        "name": "文字解析",
+        "proof_file": "_proof/5t-modules/module_M2_文字解析.json"
+      },
+      {
+        "5t_passed": true,
+        "function_exists": true,
+        "hash_lock": "1518e9da032400302f167ed4ca59a19ac3bdae6b6a465ae33097b92848d0d6c5",
+        "module_id": "M3",
+        "module_imported": true,
+        "module_sha256": "2534b856625e754714648e541a42674c042716726a32719fa67b57a3c0943bd7",
+        "name": "語音合成",
+        "proof_file": "_proof/5t-modules/module_M3_語音合成.json"
+      },
+      {
+        "5t_passed": true,
+        "function_exists": true,
+        "hash_lock": "443d7901c4d6c4612cd2054c05b623523d0fd10710f2347e3ff50cd932a412a3",
+        "module_id": "M4",
+        "module_imported": true,
+        "module_sha256": "c998679626b698c66c3abf712d69621186d10ef02e43662c1d9c39df9e572575",
+        "name": "視覺生成",
+        "proof_file": "_proof/5t-modules/module_M4_視覺生成.json"
+      },
+      {
+        "5t_passed": true,
+        "function_exists": true,
+        "hash_lock": "12d58c467a78c468b6fd0584265a8dd89d0b0590d0da9851865acf00715ab9e6",
+        "module_id": "M5",
+        "module_imported": true,
+        "module_sha256": "f881330fa25b464be2f26954b717df6328aca918cdcc67c37c71e4fc91a50b16",
+        "name": "渲染引擎",
+        "proof_file": "_proof/5t-modules/module_M5_渲染引擎.json"
+      },
+      {
+        "5t_passed": true,
+        "function_exists": true,
+        "hash_lock": "889c577bb398e58f3cc3537cbadd4404b86358f6f395c59a42fafddf2d5bcef1",
+        "module_id": "M6",
+        "module_imported": true,
+        "module_sha256": "07cd30eed03b5a888da745dd0fcf961b6d7547c07add9dad39c6fd95413007d6",
+        "name": "雲端儲存",
+        "proof_file": "_proof/5t-modules/module_M6_雲端儲存.json"
+      },
+      {
+        "5t_passed": true,
+        "function_exists": true,
+        "hash_lock": "97fd1276554f6ae19eb67c50ea1f2a372c98c5b03d4601d3f56c1266fd6a8a71",
+        "module_id": "M7",
+        "module_imported": true,
+        "module_sha256": "29240ccf4233b33bf0606f8015ebc4431507a1f778932eb93680aabee91f08f3",
+        "name": "溯源庫",
+        "proof_file": "_proof/5t-modules/module_M7_溯源庫.json"
+      }
+    ],
+    "produced_by": "inclusionai/ling-3.0-flash-fin:free",
+    "system_version": "ESG GO v0.12 (InfoOne Core)",
+    "total_modules": 7
+  }
+}

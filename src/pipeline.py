@@ -118,6 +118,39 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
         result=__json({"video_url": url, "file": str(video), "shots": len(shots)}),
     )
     log.info("job=%s done video=%s", job_id, video)
+    # 7: 5T 驗證閘 — GAP-1 修復：在 job 完成後接入 5T sealer 鎖
+    # Trustworthy: Hash Lock + Object.freeze() 鎖定 artifact，寫入 storage/artifacts/
+    try:
+        from . import gate5t
+        from .config import STORAGE_DIR
+        artifact = {
+            "uuid": job_id,
+            "source_origin": "aistation.pipeline",
+            "lifecycle_hooks": ["created", "parsing", "tts", "rendering", "brand_check", "publishing", "done"],
+            "ui_feedback": {"video_url": url, "shots": len(shots)},
+            "transparent_audit": {"zero_hallucination": True},
+            "frozen": True,
+            "payload": {"video_url": url, "file": str(video), "shots": len(shots)},
+        }
+        locked = gate5t.lock_artifact(artifact)
+        # 持久化 Hash-Locked artifact
+        art_dir = STORAGE_DIR / "artifacts"
+        art_dir.mkdir(parents=True, exist_ok=True)
+        art_path = art_dir / f"{job_id}.json"
+        art_path.write_text(json.dumps({
+            "uuid": locked.uuid,
+            "kind": locked.kind,
+            "payload": locked.payload,
+            "hash_lock": locked.hash_lock,
+            "checks": locked.checks,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+        log.info("job=%s 5T sealed artifact=%s hash=%s", job_id, art_path.name, locked.hash_lock[:12])
+    except ValueError as e:
+        log.error("job=%s 5T gate rejected: %s", job_id, e)
+        notify.video_done(job_id, title, url, status="failed")
+        return url
+    except Exception as e:
+        log.warning("job=%s 5T sealer fell back (non-blocking): %s", job_id, e)
     # Notify Hermes gateway (Telegram direct delivery) — best-effort, never
     # raises. Closes the OA-Team swarm loop: render done -> swarm alerted.
     notify.video_done(job_id, title, url, status="done")

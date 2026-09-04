@@ -1,6 +1,7 @@
 """Tests for Chapter 10 best-practice modules: gate5t, kpi, newsletter."""
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -246,3 +247,64 @@ def test_weekly_report_renders_esggo(monkeypatch, isolated_state):
     md = kpi.render_weekly_markdown(report)
     assert "案件數: 47" in md
     assert "GRI 指標: 142" in md
+
+
+# ---------------------------------------------------------------------------
+# weekly_report script (end-to-end: KPI → 5T gate → Newsletter dispatch)
+# ---------------------------------------------------------------------------
+def test_weekly_report_dry_run(monkeypatch, isolated_state):
+    """weekly_report.py --dry-run prints markdown without sending."""
+    import subprocess
+    from src import db
+
+    db.create_job("j1", "t", {"brand_preset": "sushi_dr"})
+    db.update_job("j1", status="done")
+
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "weekly_report.py"),
+         "--dry-run", "--pairing", "100", "--entropy", "0.08"],
+        capture_output=True, text=True, env={**__import__("os").environ},
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "萬能蜂群週報" in result.stdout
+    assert "[DRY-RUN]" in result.stdout
+
+
+def test_weekly_report_no_channels_prints(monkeypatch, isolated_state):
+    """weekly_report.py without --channels prints markdown + guidance."""
+    import subprocess
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "weekly_report.py")],
+        capture_output=True, text=True, env={**__import__("os").environ},
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "萬能蜂群週報" in result.stdout
+    assert "[NO CHANNELS]" in result.stdout
+
+
+def test_weekly_report_5t_freeze_integration(monkeypatch, isolated_state):
+    """End-to-end: weekly report artifact passes through 5T gate then freezes."""
+    import src.kpi as kpi
+    import src.gate5t as gate5t
+
+    # Build report, then lock it through the 5T gate
+    report = kpi.build_weekly_report(pairing=100, entropy=0.08, satisfaction=4.6)
+    md = kpi.render_weekly_markdown(report)
+
+    artifact = {
+        "uuid": f"weekly_report_{int(__import__('time').time())}",
+        "source_origin": "aistation:scripts/weekly_report.py",
+        "sources": ["aistation:scripts/weekly_report.py", "aistation:src/kpi.py",
+                     "aistation:src/newsletter.py", "aistation:src/gate5t.py"],
+        "lifecycle_hooks": ["report_built", "kpi_computed", "md_rendered", "5t_verified", "locked"],
+        "ui_feedback": {"rating": 4.7, "channel": "dry_run"},
+        "transparent_audit": True,
+        "frozen": True,
+        "content": md,
+    }
+    locked = gate5t.lock_artifact(artifact, kind="report")
+    assert gate5t.verify_locked(locked) is True
+    assert locked.hash_lock  # non-empty hash
+    assert locked.checks["Trustworthy"] is True

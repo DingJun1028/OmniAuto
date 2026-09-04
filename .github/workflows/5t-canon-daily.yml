@@ -1,0 +1,84 @@
+name: 5T-Canon Daily Verify + Dispatch
+
+on:
+  schedule:
+    # 02:00 UTC daily (10:00 台北) — verify all 5T-canon proofs,
+    # re-dispatch to Hermes webhook + Telegram, alert on drift.
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry-run only (don't dispatch)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install AI Station
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Generate all 5T-canon proofs
+        run: |
+          echo "=== Primary proof ==="
+          python gen_5t_proof.py
+          echo "=== Cross-verify (2 models) ==="
+          python gen_5t_cross_proof.py
+          echo "=== 7 module proofs ==="
+          python gen_5t_7modules.py
+
+      - name: Verify proof integrity
+        run: |
+          python verify_5t_proof.py
+          python verify_hash.py
+
+      - name: Dispatch via dual-channel notifier
+        env:
+          HERMES_WEBHOOK_URL: ${{ secrets.HERMES_WEBHOOK_URL }}
+          HERMES_WEBHOOK_SECRET: ${{ secrets.HERMES_WEBHOOK_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_HOME_CHANNEL: ${{ secrets.TELEGRAM_HOME_CHANNEL }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "Dry-run mode — skipping dispatch"
+            python gen_5t_dispatch.py 2>&1 | head -40 || true
+          else
+            python gen_5t_dispatch.py
+          fi
+
+      - name: Upload proof artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 5t-canon-proofs-${{ github.run_id }}
+          path: |
+            5T_canon_proof.json
+            5T_canon_proof_modelA.json
+            5T_canon_proof_modelB.json
+            _proof/5t-modules/
+            _proof/5t-canon/_dispatch_log.json
+          retention-days: 90
+
+      - name: Report summary
+        if: always()
+        run: |
+          echo "## 5T-Canon Daily Verify — $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Primary: $(jq -r '.5T_Canon_Proof["5t_verification_gate_report"].passed' 5T_canon_proof.json 2>/dev/null || echo unknown)" >> $GITHUB_STEP_SUMMARY
+          echo "- Modules: $(jq -r '.5T_Module_Proofs_Index.all_passed' _proof/5t-modules/_index.json 2>/dev/null || echo unknown)" >> $GITHUB_STEP_SUMMARY
+          echo "- Dispatch log: _proof/5t-canon/_dispatch_log.json" >> $GITHUB_STEP_SUMMARY

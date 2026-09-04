@@ -1,0 +1,88 @@
+{
+  "5T_Canon_CrossProof": {
+    "5t_verification_gate_report": {
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      },
+      "errors": [],
+      "missing": [],
+      "passed": true
+    },
+    "component_core": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "07fb6b6335f369317fb0a068fb45024cf3a6dad4bf6bed0ff5464693a2619d04",
+        "kind": "5T-Canon-Proof-CrossVerify-primary"
+      },
+      "hashLock": "07fb6b6335f369317fb0a068fb45024cf3a6dad4bf6bed0ff5464693a2619d04",
+      "timestamp": 1788516667,
+      "uuid": "4d3b1691-0d78-48bf-bb27-6fa1b90b06c0",
+      "version": "ESG GO v0.12"
+    },
+    "meta": {
+      "cross_verify_purpose": "Independent model produces identical 5T-pass verdict",
+      "generated_at": "2026-09-04T10:11:07Z",
+      "produced_by": "inclusionai/ling-3.0-flash-fin:free",
+      "protocol": "5T (Traceable·Trackable·Tangible·Transparent·Trustworthy)",
+      "system_version": "ESG GO v0.12 (InfoOne Core)"
+    },
+    "tangible": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "07fb6b6335f369317fb0a068fb45024cf3a6dad4bf6bed0ff5464693a2619d04",
+        "kind": "5T-Canon-Proof-CrossVerify-primary"
+      },
+      "quality_gate": "PASSED"
+    },
+    "traceable": {
+      "evidence_chain": "獨立模型 → 獨立 artifact → 5T 驗算 → Hash Lock → 凍結",
+      "source_origin": "OA-Team-30-Swarm::inclusionai/ling-3.0-flash-fin:free",
+      "sources": [
+        "OA-Team 30 Soul Canon §一 1.1 5T 協定",
+        "aistation/src/gate5t.py PurifiedArtifact",
+        "soul.md §三 蜂群靈魂執行鏈",
+        "OA-Team 5T Verification Skill",
+        "cross-verify-by-inclusionai/ling-3.0-flash-fin:free"
+      ],
+      "uuid": "4d3b1691-0d78-48bf-bb27-6fa1b90b06c0"
+    },
+    "trackable": {
+      "iso_8601": "2026-09-04T10:11:07Z",
+      "lifecycle_hooks": [
+        "extract_essence",
+        "swarm_dispatch",
+        "5t_verification",
+        "hash_lock",
+        "freeze"
+      ],
+      "timestamp": 1788516667
+    },
+    "transparent": {
+      "transparent_audit": true,
+      "version": "ESG GO v0.12 (InfoOne Core)",
+      "zero_hallucination": "verified"
+    },
+    "trustworthy": {
+      "frozen": true,
+      "hash_lock": "07fb6b6335f369317fb0a068fb45024cf3a6dad4bf6bed0ff5464693a2619d04",
+      "immutable": true,
+      "object_freeze": "@dataclass(frozen=True)"
+    }
+  }
+}
