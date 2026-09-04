@@ -122,6 +122,17 @@ def gen_module_proof(module_id: str, name: str, code_module: str,
 
 
 def proof_doc(r: dict) -> dict:
+    # Defensive: if a module failed earlier, fake_r may lack 'artifact' or 'locked'.
+    # Build a minimal fallback doc so the loop completes.
+    if "artifact" not in r or "locked" not in r:
+        mod_id = r.get("module_id", "unknown")
+        return {
+            "5T_Canon_Module_Proof": {
+                "meta": {"produced_by": PRODUCER, "skipped": True,
+                         "reason": "module generation failed upstream"},
+                "module_id": mod_id,
+            }
+        }
     l = r["locked"]
     a = r["artifact"]
     rp = r["report"]
@@ -197,11 +208,26 @@ def main():
         except Exception as e:
             # Don't let one module's failure cascade — log + continue
             print(f"  ⚠️ SKIPPED due to: {type(e).__name__}: {e}", flush=True)
-            # Mark as failed but don't break the loop
-            fake_r = {"report": type("R", (), {"passed": False})(),
-                      "probe": {"module_imported": False, "function_exists": False, "module_sha256": ""},
-                      "locked": type("L", (), {"hash_lock": ""})(),
-                      "component": {}}
+            # Mark as failed but don't break the loop. Provide all keys
+            # proof_doc() expects so downstream writes don't crash.
+            import types
+            fake_r = {
+                "module_id": mod_id,
+                "name": name,
+                "artifact": {
+                    "version": "ESG GO v0.12 (InfoOne Core)",
+                    "module_probe": {"module_id": mod_id, "name": name,
+                                     "code_module": code_module,
+                                     "code_function": code_fn,
+                                     "description": desc,
+                                     "probe": {}},
+                },
+                "report": types.SimpleNamespace(passed=False, checks={}, missing=[], errors=[str(e)]),
+                "probe": {"module_imported": False, "function_exists": False, "module_sha256": ""},
+                "locked": types.SimpleNamespace(uuid="", kind=f"5T-Canon-Proof-{mod_id}-{name}-SKIPPED",
+                                                hash_lock="", payload="", checks={}),
+                "component": {},
+            }
             results.append((mod_id, name, fake_r, False))
 
     print(f"\n{'=' * 70}")
