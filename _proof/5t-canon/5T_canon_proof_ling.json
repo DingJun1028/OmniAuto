@@ -1,0 +1,101 @@
+{
+  "5T_Canon_Proof": {
+    "5t_verification_gate_report": {
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      },
+      "errors": [],
+      "missing": [],
+      "passed": true
+    },
+    "component_core": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "ec7c5c3869bb0e277afbd5a5a4eb3c33e0e16e1421d2640df01ae292332b0fe6",
+        "kind": "5T-Canon-Proof"
+      },
+      "hashLock": "ec7c5c3869bb0e277afbd5a5a4eb3c33e0e16e1421d2640df01ae292332b0fe6",
+      "timestamp": 1788516370,
+      "uuid": "6ac9f836-a8a0-4ab5-a378-cdb958787bbb",
+      "version": "ESG GO v0.12"
+    },
+    "meta": {
+      "command": "Hermes Agent / Celestial Command",
+      "core_license": "AGPL-3.0",
+      "entropy_target": "< 0.1",
+      "generated_at": "2026-09-04T10:06:10Z",
+      "generated_by_model": "inclusionai/ling-3.0-flash-fin:free",
+      "produced_by": "inclusionai/ling-3.0-flash-fin:free",
+      "protocol": "5T (Traceable·Trackable·Tangible·Transparent·Trustworthy)",
+      "system_version": "ESG GO v0.12 (InfoOne Core)"
+    },
+    "tangible": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "ec7c5c3869bb0e277afbd5a5a4eb3c33e0e16e1421d2640df01ae292332b0fe6",
+        "kind": "5T-Canon-Proof"
+      },
+      "quality_gate": "PASSED"
+    },
+    "traceable": {
+      "evidence_chain": "第一因 → 蜂群提純 → 5T 驗算 → Hash Lock → 凍結",
+      "source_origin": "OA-Team-30-Swarm::inclusionai/ling-3.0-flash-fin:free",
+      "sources": [
+        "OA-Team 30 Soul Canon §一 1.1 5T 協定",
+        "aistation/src/gate5t.py PurifiedArtifact",
+        "soul.md §三 蜂群靈魂執行鏈",
+        "OA-Team 5T Verification Skill"
+      ],
+      "uuid": "6ac9f836-a8a0-4ab5-a378-cdb958787bbb"
+    },
+    "trackable": {
+      "iso_8601": "2026-09-04T10:06:10Z",
+      "lifecycle_hooks": [
+        "extract_essence",
+        "swarm_dispatch",
+        "5t_verification",
+        "hash_lock",
+        "freeze"
+      ],
+      "process_trace": [
+        "Extract Core Essence → Queen Bee",
+        "Activate 30 Agents Network → Swarm Dispatch",
+        "5T Verification Gate → gate5t.verify_5t()",
+        "Hash Lock → SHA-256 digest",
+        "Object.freeze() → LockedArtifact (frozen=True)"
+      ],
+      "timestamp": 1788516370
+    },
+    "transparent": {
+      "algorithm_open": "gate5t.py source publicly auditable",
+      "decision_logic": "All 5T pillars must pass before release",
+      "transparent_audit": true,
+      "version": "ESG GO v0.12 (InfoOne Core)",
+      "zero_hallucination": "verified"
+    },
+    "trustworthy": {
+      "frozen": true,
+      "hash_lock": "ec7c5c3869bb0e277afbd5a5a4eb3c33e0e16e1421d2640df01ae292332b0fe6",
+      "immutable": true,
+      "object_freeze": "LockedArtifact is @dataclass(frozen=True)",
+      "sha256_digest": "ec7c5c3869bb0e277afbd5a5a4eb3c33e0e16e1421d2640df01ae292332b0fe6",
+      "tamper_detection": "verify_locked() re-checks hash on every access"
+    }
+  }
+}
