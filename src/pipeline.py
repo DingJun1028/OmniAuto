@@ -34,10 +34,12 @@ def _shutdown_pool():
     _pool.shutdown(wait=False, cancel_futures=False)
 
 
-def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None = None) -> str:
+def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None = None,
+                 voice: str | None = None, style_name: str | None = None,
+                 style_text: str | None = None) -> str:
     work = config.STORAGE_DIR / job_id
     work.mkdir(parents=True, exist_ok=True)
-    log.info("job=%s start title=%r brand=%s", job_id, title, brand_preset)
+    log.info("job=%s start title=%r brand=%s voice=%s", job_id, title, brand_preset, voice)
 
     db.update_job(job_id, status="parsing", progress=5)
     shots = parse_script(script)
@@ -53,7 +55,10 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
         idx = i + 1
         db.update_job(job_id, status="rendering", progress=20 + int(60 * idx / total))
         a = work / f"shot_{idx}.mp3"
-        path, bounds, _silent = tts.synthesize(sd["narration"], a)
+        path, bounds, _silent = tts.synthesize_with_voice(sd["narration"], a,
+                                                            voice=voice,
+                                                            style_name=style_name,
+                                                            style_text=style_text)
         audios.append(a)
         all_boundaries.append(bounds)
         png = work / f"shot_{idx}.png"
@@ -152,31 +157,48 @@ def run_pipeline(job_id: str, script: str, title: str, brand_preset: str | None 
     return url
 
 
-def enqueue(script: str, title: str, brand_preset: str | None = None) -> dict:
-    """Run synchronously (webhook path) and return the finished job record."""
+def enqueue(script: str, title: str, brand_preset: str | None = None,
+            voice: str | None = None, style_name: str | None = None,
+            style_text: str | None = None, video_ratio: str | None = None) -> dict:
+    """Run synchronously (webhook path) and return the finished job record.
+
+    Optional voice/style_name/style_text are forwarded to the TTS engine.
+    video_ratio can override config.VIDEO_RATIO at runtime (e.g., "9:16"
+    for vertical MPT clips).
+    """
     job_id = uuid.uuid4().hex[:12]
-    db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset})
+    db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset,
+                                  "voice": voice, "style_name": style_name})
     try:
-        run_pipeline(job_id, script, title, brand_preset=brand_preset)
-    except Exception as e:  # keep the job record even on failure
+        run_pipeline(job_id, script, title, brand_preset=brand_preset,
+                     voice=voice, style_name=style_name, style_text=style_text)
+    except Exception as e:
         log.exception("job=%s failed", job_id)
         db.update_job(job_id, status="failed", result=__json({"error": str(e)}))
     return db.get_job(job_id)  # type: ignore[return-value]
 
 
-def submit(script: str, title: str, brand_preset: str | None = None) -> str:
+def submit(script: str, title: str, brand_preset: str | None = None,
+          voice: str | None = None, style_name: str | None = None,
+          style_text: str | None = None) -> str:
     """Create the job and run the render in the background pool; return job_id
-    immediately. The caller polls GET /api/jobs/{id} for status."""
+    immediately. The caller polls GET /api/jobs/{id} for status.
+
+    Optional voice/style_name/style_text are forwarded to the TTS engine,
+    enabling OmniAutoVideo 萬能自動影音 to pass the user's selected Azure voice at
+    submission time (e.g., "zh-TW-HsiaoChenNeural").
+    """
     job_id = uuid.uuid4().hex[:12]
     db.create_job(job_id, title, {"script": script, "brand_preset": brand_preset,
-                                  "status": "queued", "progress": 0})
-    log.info("job=%s submitted (background)", job_id)
+                                  "status": "queued", "progress": 0,
+                                  "voice": voice, "style_name": style_name})
+    log.info("job=%s submitted (background) voice=%s", job_id, voice)
 
     def _run():
-        # Mirror enqueue()'s safety so a render error is recorded as `failed`
-        # instead of leaving the job stuck in `queued`/`rendering` forever.
         try:
-            run_pipeline(job_id, script, title, brand_preset=brand_preset)
+            run_pipeline(job_id, script, title, brand_preset=brand_preset,
+                         voice=voice, style_name=style_name,
+                         style_text=style_text)
         except Exception as e:
             log.exception("job=%s failed (background)", job_id)
             db.update_job(job_id, status="failed", result=__json({"error": str(e)}))

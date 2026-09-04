@@ -50,9 +50,23 @@ STORAGE_DIR = BASE_DIR / "storage"
 # runs at app startup) and by pipeline.run_pipeline() before writing outputs.
 
 # ---- Rendering ----
-VIDEO_WIDTH = int(os.getenv("VIDEO_WIDTH", "1280"))
-VIDEO_HEIGHT = int(os.getenv("VIDEO_HEIGHT", "720"))
+# Default: 16:9 horizontal. If VIDEO_RATIO=9:16 (OmniAutoVideo 萬能自動影音 vertical),
+# width/height flip to portrait automatically.
+VIDEO_RATIO = os.getenv("VIDEO_RATIO", "16:9")  # "16:9" or "9:16"
+VIDEO_WIDTH = int(os.getenv("VIDEO_WIDTH", "1920"))
+VIDEO_HEIGHT = int(os.getenv("VIDEO_HEIGHT", "1080"))
+# Horizontal/vertical auto-derivation (MPT uses 9:16 portrait by default)
+if os.getenv("VIDEO_RATIO") == "9:16" and not os.getenv("VIDEO_WIDTH"):
+    VIDEO_WIDTH, VIDEO_HEIGHT = 1080, 1920
 VIDEO_FPS = int(os.getenv("VIDEO_FPS", "30"))
+
+# ---- OmniAutoVideo 萬能自動影音 compatibility knobs ----
+# Max single-shot duration (MPT default 3s). Shots longer than this are
+# automatically split in the parser so the ffmpeg renderer never produces
+# a single clip exceeding MPT's 3-second ceiling.
+MAX_SHOT_DURATION = float(os.getenv("MAX_SHOT_DURATION", "3"))
+# Ken-burns zoom factor for still-image shots (MPT uses 1.15x for subtle motion).
+KEN_BURNS_ZOOM = float(os.getenv("KEN_BURNS_ZOOM", "1.08"))
 
 # ---- 2. Text parsing (LLM brain) ----
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -63,6 +77,20 @@ USE_OPENAI = bool(OPENAI_API_KEY)
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 USE_ELEVENLABS = bool(ELEVENLABS_API_KEY)
+
+# Azure TTS V1 (edge-tts under the hood). MPT uses zh-TW-HsiaoChenNeural.
+# Setting AZURE_VOICE enables the Azure edge-tts voice directly (no REST key needed
+# — edge-tts speaks the voice natively). Optional AZURE_VOICE_STYLE / STYLE_TEXT_ for
+# the "style name" + "style text" fields OmniAutoVideo 萬能自動影音 exposes.
+AZURE_VOICE = os.getenv("AZURE_VOICE", "")
+AZURE_VOICE_STYLE = os.getenv("AZURE_VOICE_STYLE", "")
+AZURE_STYLE_TEXT = os.getenv("AZURE_STYLE_TEXT", "")
+USE_AZURE = bool(AZURE_VOICE)
+# Azure voice resolution: if AZURE_VOICE is blank, default to edge-tts's
+# multi-language neural voice (same as MPT's default zh-TW-HsiaoChenNeural).
+EDGE_VOICE = AZURE_VOICE or "zh-TW-HsiaoChenNeural"
+# A secondary English fallback for bilingual scripts.
+EDGE_VOICE_EN = os.getenv("EDGE_VOICE_EN", "en-US-AriaNeural")
 
 # ---- 4. Visuals ----
 RUNWAY_API_KEY = os.getenv("RUNWAY_API_KEY", "")
@@ -113,8 +141,12 @@ def feature_summary() -> dict:
     """Human-readable map of which modules are live vs. using free fallback."""
     return {
         "llm_brain": "openai" if USE_OPENAI else "builtin-free-parser",
-        "tts": "elevenlabs" if USE_ELEVENLABS else "edge-tts (free)",
+        "tts": "elevenlabs" if USE_ELEVENLABS else ("azure" if USE_AZURE else "edge-tts (free)"),
+        "tts_voice": EDGE_VOICE,
         "visuals": "runway" if USE_RUNWAY else "pillow-gradient (free)",
         "storage": "s3" if USE_S3 else "local",
         "provenance_db": "ncbdb" if USE_NCBDB else "sqlite (local)",
+        "video_ratio": VIDEO_RATIO,
+        "max_shot_duration": MAX_SHOT_DURATION,
+        "ken_burns_zoom": KEN_BURNS_ZOOM,
     }

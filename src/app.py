@@ -19,6 +19,7 @@ import uuid
 import time
 
 from fastapi import FastAPI, HTTPException, Request, Depends
+from pydantic import BaseModel
 from fastapi.responses import FileResponse, HTMLResponse
 
 # Import types from the centralized type definitions
@@ -27,6 +28,7 @@ from .types.api import ScriptIn, JobResponse, WebhookIn
 from . import db, pipeline
 from . import config
 from .config import BASE_DIR, feature_summary, setup_logging, log
+from . import brand as _brand_module
 
 app = FastAPI(title="AI Station", version="0.1.0")
 db.init_db()
@@ -140,6 +142,87 @@ def create_job(payload: ScriptIn, request: Request, _: None = Depends(rate_limit
         raise HTTPException(400, "script is empty")
     job_id = pipeline.submit(payload.script, payload.title, brand_preset=payload.brand_preset)
     return {"job_id": job_id, "status": "queued"}
+
+
+@app.get("/api/config")
+def api_config():
+    """OmniAutoVideo 萬能自動影音-compatible config endpoint.
+
+    Exposes the full set of tunable knobs so MPT's UI can reflect the live
+    server configuration (TTS engine, voice, video ratio, max shot duration,
+    brand presets, available voices, etc.).
+    """
+    return {
+        "tts_engine": "azure" if config.USE_AZURE
+                     else ("elevenlabs" if config.USE_ELEVENLABS else "edge-tts"),
+        "tts_voice": config.EDGE_VOICE,
+        "tts_voice_en": config.EDGE_VOICE_EN,
+        "azure_voice": config.AZURE_VOICE,
+        "azure_voice_style": config.AZURE_VOICE_STYLE,
+        "azure_style_text": config.AZURE_STYLE_TEXT,
+        "elevenlabs_voice_id": config.ELEVENLABS_VOICE_ID,
+        "video_ratio": config.VIDEO_RATIO,
+        "video_width": config.VIDEO_WIDTH,
+        "video_height": config.VIDEO_HEIGHT,
+        "video_fps": config.VIDEO_FPS,
+        "max_shot_duration": config.MAX_SHOT_DURATION,
+        "ken_burns_zoom": config.KEN_BURNS_ZOOM,
+        "use_runway": config.USE_RUNWAY,
+        "use_s3": config.USE_S3,
+        "use_ncbdb": config.USE_NCBDB,
+        "available_voices": [
+            "zh-TW-HsiaoChenNeural",
+            "zh-CN-XiaoxiNeural",
+            "zh-CN-YaoHanNeural",
+            "en-US-AriaNeural",
+            "en-US-GuyNeural",
+        ],
+        "brand_presets": list(_brand_module.SERIES.keys()),
+        "features": feature_summary(),
+    }
+
+
+class MPTWebhookIn(BaseModel):
+    """OmniAutoVideo 萬能自動影音 webhook payload (mirrors the UI form fields)."""
+    title: str = "Untitled"
+    script: str | None = None
+    text: str | None = None
+    brand_preset: str | None = None  # "sushi_dr" for 壽司博士
+    voice: str | None = None          # e.g. "zh-TW-HsiaoChenNeural"
+    style_name: str | None = None     # Azure voice style ("sad", "cheerful", …)
+    style_text: str | None = None    # Azure style text context
+    video_ratio: str | None = None    # "16:9" or "9:16"
+
+    @property
+    def body(self) -> str:
+        return self.script or self.text or ""
+
+
+@app.post("/webhook/mpt")
+def webhook_mpt(payload: MPTWebhookIn, request: Request, _: None = Depends(rate_limit)):
+    _check_webhook_auth(request)
+    script = payload.body
+    if not script.strip():
+        raise HTTPException(400, "missing 'script' or 'text'")
+
+    # Synchronous render (MPT awaits the response). Uses enqueue() which
+    # runs the full pipeline to completion before returning.
+    job = pipeline.enqueue(
+        script, payload.title, brand_preset=payload.brand_preset,
+        voice=payload.voice, style_name=payload.style_name,
+        style_text=payload.style_text,
+    )
+    res = json.loads(job["result"]) if job.get("result") else {}
+    video_url = res.get("video_url")
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "ok": job["status"] == "done" and bool(video_url),
+        "title": job["title"],
+        "video_url": video_url,
+        "shots": res.get("shots"),
+        "error": res.get("error") if job["status"] == "failed" else None,
+    }
 
 
 @app.get("/api/brand")
