@@ -9,6 +9,17 @@ Module map (per soul.md §9.3 + §9.5):
   M6 雲端儲存  (Exec→Auto)    storage + oci_controller   — storage.py + oci_controller
   M7 溯源庫    (Automation)   db.update_job + entropy     — db.py + entropy.py
 """
+from __future__ import annotations
+
+import sys
+from pathlib import Path as _Path
+
+# Defense: when invoked via subprocess from a different cwd, ensure the
+# aistation workdir is importable so `importlib.import_module("src.pipeline")`
+# works. Without this, cron subprocess envs may lack the workdir in sys.path.
+_WORKDIR = _Path(__file__).resolve().parent
+if str(_WORKDIR) not in sys.path:
+    sys.path.insert(0, str(_WORKDIR))
 import json, hashlib, time, uuid, sys, importlib
 sys.path.insert(0, r'C:\Project\aistation')
 from src import gate5t
