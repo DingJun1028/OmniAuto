@@ -122,65 +122,78 @@ def gen_module_proof(module_id: str, name: str, code_module: str,
 
 
 def proof_doc(r: dict) -> dict:
-    # Defensive: if a module failed earlier, fake_r may lack 'artifact' or 'locked'.
-    # Build a minimal fallback doc so the loop completes.
-    if "artifact" not in r or "locked" not in r:
+    # Fast-path for SKIPPED modules — skip the full doc construction.
+    # Detected by checking if hash_lock is empty (legitimate modules have hashes).
+    if not getattr(r.get("locked"), "hash_lock", ""):
         mod_id = r.get("module_id", "unknown")
         return {
             "5T_Canon_Module_Proof": {
-                "meta": {"produced_by": PRODUCER, "skipped": True,
-                         "reason": "module generation failed upstream"},
+                "meta": {
+                    "produced_by": PRODUCER,
+                    "skipped": True,
+                    "module_id": mod_id,
+                    "reason": "module generation failed upstream",
+                },
                 "module_id": mod_id,
+                "5t_verification_gate_report": {
+                    "passed": False,
+                    "missing": ["skipped_upstream"],
+                    "errors": getattr(r.get("report"), "errors", []),
+                },
             }
         }
     l = r["locked"]
     a = r["artifact"]
     rp = r["report"]
+    # Defensive defaults — fake_r from try/except may be missing nested keys
+    ts = a.get("timestamp") or int(time.time())
     return {
         "5T_Canon_Module_Proof": {
             "meta": {
                 "produced_by": PRODUCER,
                 "protocol": "5T (Traceable·Trackable·Tangible·Transparent·Trustworthy)",
-                "system_version": a["version"],
-                "module": a["module_probe"],
-                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(a["timestamp"])),
+                "system_version": a.get("version", "ESG GO v0.12 (InfoOne Core)"),
+                "module": a.get("module_probe", {}),
+                "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts)),
             },
             "traceable": {
-                "uuid": l.uuid,
-                "source_origin": a["source_origin"],
-                "sources": a["sources"],
+                "uuid": getattr(l, "uuid", ""),
+                "source_origin": a.get("source_origin", ""),
+                "sources": a.get("sources", []),
                 "evidence_chain": "Module probe → artifact → 5T gate → Hash Lock → 凍結",
             },
             "trackable": {
-                "lifecycle_hooks": a["lifecycle_hooks"],
-                "timestamp": a["timestamp"],
-                "iso_8601": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(a["timestamp"])),
+                "lifecycle_hooks": a.get("lifecycle_hooks", []),
+                "timestamp": ts,
+                "iso_8601": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ts)),
             },
             "tangible": {
-                "evidence": {"hash_lock": l.hash_lock, "kind": l.kind, "checks": l.checks},
-                "module_probe": r["probe"],
-                "quality_gate": "PASSED" if rp.passed else "FAILED",
+                "evidence": {"hash_lock": getattr(l, "hash_lock", ""),
+                             "kind": getattr(l, "kind", ""),
+                             "checks": getattr(l, "checks", {})},
+                "module_probe": r.get("probe", {}),
+                "quality_gate": "PASSED" if getattr(rp, "passed", False) else "FAILED",
             },
             "transparent": {
-                "version": a["version"],
-                "transparent_audit": a["transparent_audit"],
+                "version": a.get("version", "ESG GO v0.12 (InfoOne Core)"),
+                "transparent_audit": a.get("transparent_audit", False),
                 "zero_hallucination": "verified-via-real-probe",
-                "algorithm_open": f"src/{a['module_probe']['code_module']}.py",
-                "module_sha256": r["probe"].get("module_sha256"),
+                "algorithm_open": f"src/{a.get('module_probe', {}).get('code_module', '?')}.py",
+                "module_sha256": r.get("probe", {}).get("module_sha256"),
             },
             "trustworthy": {
                 "frozen": True,
-                "hash_lock": l.hash_lock,
+                "hash_lock": getattr(l, "hash_lock", ""),
                 "immutable": True,
                 "object_freeze": "@dataclass(frozen=True)",
             },
             "5t_verification_gate_report": {
-                "passed": rp.passed,
-                "checks": rp.checks,
-                "missing": rp.missing,
-                "errors": rp.errors,
+                "passed": getattr(rp, "passed", False),
+                "checks": getattr(rp, "checks", {}),
+                "missing": getattr(rp, "missing", []),
+                "errors": getattr(rp, "errors", []),
             },
-            "component_core": r["component"],
+            "component_core": r.get("component", {}),
         }
     }
 
@@ -208,24 +221,40 @@ def main():
         except Exception as e:
             # Don't let one module's failure cascade — log + continue
             print(f"  ⚠️ SKIPPED due to: {type(e).__name__}: {e}", flush=True)
-            # Mark as failed but don't break the loop. Provide all keys
-            # proof_doc() expects so downstream writes don't crash.
+            # Mark as failed but don't break the loop. Provide a complete
+            # fake_r with all keys proof_doc() expects — including a
+            # timestamp/sources/lifecycle_hooks so JSON serialization works.
             import types
+            ts_now = int(time.time())
             fake_r = {
                 "module_id": mod_id,
                 "name": name,
                 "artifact": {
+                    "uuid": "",
+                    "source_origin": (
+                        f"OA-Team-30-Swarm::AIStation::{mod_id}::{code_module}::SKIPPED"
+                    ),
                     "version": "ESG GO v0.12 (InfoOne Core)",
+                    "timestamp": ts_now,
+                    "kind": f"5T-Canon-Proof-{mod_id}-{name}-SKIPPED",
+                    "lifecycle_hooks": ["module_probe_skipped"],
+                    "sources": [f"SKIPPED due to: {e}"],
+                    "transparent_audit": False,
+                    "frozen": True,
                     "module_probe": {"module_id": mod_id, "name": name,
                                      "code_module": code_module,
                                      "code_function": code_fn,
                                      "description": desc,
                                      "probe": {}},
                 },
-                "report": types.SimpleNamespace(passed=False, checks={}, missing=[], errors=[str(e)]),
-                "probe": {"module_imported": False, "function_exists": False, "module_sha256": ""},
-                "locked": types.SimpleNamespace(uuid="", kind=f"5T-Canon-Proof-{mod_id}-{name}-SKIPPED",
-                                                hash_lock="", payload="", checks={}),
+                "report": types.SimpleNamespace(passed=False, checks={},
+                                                missing=["skipped_upstream"],
+                                                errors=[str(e)]),
+                "probe": {"module_imported": False, "function_exists": False,
+                          "module_sha256": ""},
+                "locked": types.SimpleNamespace(
+                    uuid="", kind=f"5T-Canon-Proof-{mod_id}-{name}-SKIPPED",
+                    hash_lock="", payload="", checks={}),
                 "component": {},
             }
             results.append((mod_id, name, fake_r, False))
