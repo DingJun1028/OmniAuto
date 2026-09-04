@@ -1,0 +1,111 @@
+{
+  "5T_Canon_Module_Proof": {
+    "5t_verification_gate_report": {
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      },
+      "errors": [],
+      "missing": [],
+      "passed": true
+    },
+    "component_core": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "d9261b5e40ff25d1afbec579311c84443bcbec5bed84eeec9e6e8d42aebc3cf3",
+        "kind": "5T-Canon-Proof-M2-文字解析"
+      },
+      "hashLock": "d9261b5e40ff25d1afbec579311c84443bcbec5bed84eeec9e6e8d42aebc3cf3",
+      "timestamp": 1788516838,
+      "uuid": "026161b7-4f5f-49e8-abff-f8c5153b702c",
+      "version": "ESG GO v0.12"
+    },
+    "meta": {
+      "generated_at": "2026-09-04T10:13:58Z",
+      "module": {
+        "code_function": "parse_script",
+        "code_module": "parser",
+        "description": "Script parser with DNA tagging",
+        "module_id": "M2",
+        "name": "文字解析",
+        "probe": {
+          "callable": true,
+          "function_exists": true,
+          "module_file": "C:\\Project\\aistation\\src\\parser.py",
+          "module_imported": true,
+          "module_sha256": "64d53d937e739c1b1670ccc7d15454d089e87c94623d8ec5036125b1b6c15750"
+        }
+      },
+      "produced_by": "inclusionai/ling-3.0-flash-fin:free",
+      "protocol": "5T (Traceable·Trackable·Tangible·Transparent·Trustworthy)",
+      "system_version": "ESG GO v0.12 (InfoOne Core)"
+    },
+    "tangible": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "d9261b5e40ff25d1afbec579311c84443bcbec5bed84eeec9e6e8d42aebc3cf3",
+        "kind": "5T-Canon-Proof-M2-文字解析"
+      },
+      "module_probe": {
+        "callable": true,
+        "function_exists": true,
+        "module_file": "C:\\Project\\aistation\\src\\parser.py",
+        "module_imported": true,
+        "module_sha256": "64d53d937e739c1b1670ccc7d15454d089e87c94623d8ec5036125b1b6c15750"
+      },
+      "quality_gate": "PASSED"
+    },
+    "traceable": {
+      "evidence_chain": "Module probe → artifact → 5T gate → Hash Lock → 凍結",
+      "source_origin": "OA-Team-30-Swarm::AIStation::M2::parser::inclusionai/ling-3.0-flash-fin:free",
+      "sources": [
+        "OA-Team 30 Soul Canon §9.3 7 模組生產線",
+        "aistation/src/gate5t.py PurifiedArtifact",
+        "aistation/src/parser.py",
+        "Real probe: module imported=True",
+        "Real probe: function callable=True"
+      ],
+      "uuid": "026161b7-4f5f-49e8-abff-f8c5153b702c"
+    },
+    "trackable": {
+      "iso_8601": "2026-09-04T10:13:58Z",
+      "lifecycle_hooks": [
+        "module_probe::M2",
+        "extract_essence",
+        "swarm_dispatch",
+        "5t_verification",
+        "hash_lock",
+        "freeze"
+      ],
+      "timestamp": 1788516838
+    },
+    "transparent": {
+      "algorithm_open": "src/parser.py",
+      "module_sha256": "64d53d937e739c1b1670ccc7d15454d089e87c94623d8ec5036125b1b6c15750",
+      "transparent_audit": true,
+      "version": "ESG GO v0.12 (InfoOne Core)",
+      "zero_hallucination": "verified-via-real-probe"
+    },
+    "trustworthy": {
+      "frozen": true,
+      "hash_lock": "d9261b5e40ff25d1afbec579311c84443bcbec5bed84eeec9e6e8d42aebc3cf3",
+      "immutable": true,
+      "object_freeze": "@dataclass(frozen=True)"
+    }
+  }
+}

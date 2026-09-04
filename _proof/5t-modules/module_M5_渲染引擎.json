@@ -1,0 +1,111 @@
+{
+  "5T_Canon_Module_Proof": {
+    "5t_verification_gate_report": {
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      },
+      "errors": [],
+      "missing": [],
+      "passed": true
+    },
+    "component_core": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "12d58c467a78c468b6fd0584265a8dd89d0b0590d0da9851865acf00715ab9e6",
+        "kind": "5T-Canon-Proof-M5-渲染引擎"
+      },
+      "hashLock": "12d58c467a78c468b6fd0584265a8dd89d0b0590d0da9851865acf00715ab9e6",
+      "timestamp": 1788516838,
+      "uuid": "88a7ad85-a05a-4d24-8f6e-36b647cabbaa",
+      "version": "ESG GO v0.12"
+    },
+    "meta": {
+      "generated_at": "2026-09-04T10:13:58Z",
+      "module": {
+        "code_function": "render_shot_clip",
+        "code_module": "renderer",
+        "description": "ffmpeg concat + synced captions",
+        "module_id": "M5",
+        "name": "渲染引擎",
+        "probe": {
+          "callable": true,
+          "function_exists": true,
+          "module_file": "C:\\Project\\aistation\\src\\renderer.py",
+          "module_imported": true,
+          "module_sha256": "f881330fa25b464be2f26954b717df6328aca918cdcc67c37c71e4fc91a50b16"
+        }
+      },
+      "produced_by": "inclusionai/ling-3.0-flash-fin:free",
+      "protocol": "5T (Traceable·Trackable·Tangible·Transparent·Trustworthy)",
+      "system_version": "ESG GO v0.12 (InfoOne Core)"
+    },
+    "tangible": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "12d58c467a78c468b6fd0584265a8dd89d0b0590d0da9851865acf00715ab9e6",
+        "kind": "5T-Canon-Proof-M5-渲染引擎"
+      },
+      "module_probe": {
+        "callable": true,
+        "function_exists": true,
+        "module_file": "C:\\Project\\aistation\\src\\renderer.py",
+        "module_imported": true,
+        "module_sha256": "f881330fa25b464be2f26954b717df6328aca918cdcc67c37c71e4fc91a50b16"
+      },
+      "quality_gate": "PASSED"
+    },
+    "traceable": {
+      "evidence_chain": "Module probe → artifact → 5T gate → Hash Lock → 凍結",
+      "source_origin": "OA-Team-30-Swarm::AIStation::M5::renderer::inclusionai/ling-3.0-flash-fin:free",
+      "sources": [
+        "OA-Team 30 Soul Canon §9.3 7 模組生產線",
+        "aistation/src/gate5t.py PurifiedArtifact",
+        "aistation/src/renderer.py",
+        "Real probe: module imported=True",
+        "Real probe: function callable=True"
+      ],
+      "uuid": "88a7ad85-a05a-4d24-8f6e-36b647cabbaa"
+    },
+    "trackable": {
+      "iso_8601": "2026-09-04T10:13:58Z",
+      "lifecycle_hooks": [
+        "module_probe::M5",
+        "extract_essence",
+        "swarm_dispatch",
+        "5t_verification",
+        "hash_lock",
+        "freeze"
+      ],
+      "timestamp": 1788516838
+    },
+    "transparent": {
+      "algorithm_open": "src/renderer.py",
+      "module_sha256": "f881330fa25b464be2f26954b717df6328aca918cdcc67c37c71e4fc91a50b16",
+      "transparent_audit": true,
+      "version": "ESG GO v0.12 (InfoOne Core)",
+      "zero_hallucination": "verified-via-real-probe"
+    },
+    "trustworthy": {
+      "frozen": true,
+      "hash_lock": "12d58c467a78c468b6fd0584265a8dd89d0b0590d0da9851865acf00715ab9e6",
+      "immutable": true,
+      "object_freeze": "@dataclass(frozen=True)"
+    }
+  }
+}

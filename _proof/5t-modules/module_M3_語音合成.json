@@ -1,0 +1,111 @@
+{
+  "5T_Canon_Module_Proof": {
+    "5t_verification_gate_report": {
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      },
+      "errors": [],
+      "missing": [],
+      "passed": true
+    },
+    "component_core": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "1518e9da032400302f167ed4ca59a19ac3bdae6b6a465ae33097b92848d0d6c5",
+        "kind": "5T-Canon-Proof-M3-語音合成"
+      },
+      "hashLock": "1518e9da032400302f167ed4ca59a19ac3bdae6b6a465ae33097b92848d0d6c5",
+      "timestamp": 1788516838,
+      "uuid": "2e99bfe4-7d24-432f-bdeb-70880608132d",
+      "version": "ESG GO v0.12"
+    },
+    "meta": {
+      "generated_at": "2026-09-04T10:13:58Z",
+      "module": {
+        "code_function": "synthesize",
+        "code_module": "tts",
+        "description": "edge-tts synthesis with word boundaries",
+        "module_id": "M3",
+        "name": "語音合成",
+        "probe": {
+          "callable": true,
+          "function_exists": true,
+          "module_file": "C:\\Project\\aistation\\src\\tts.py",
+          "module_imported": true,
+          "module_sha256": "2534b856625e754714648e541a42674c042716726a32719fa67b57a3c0943bd7"
+        }
+      },
+      "produced_by": "inclusionai/ling-3.0-flash-fin:free",
+      "protocol": "5T (Traceable·Trackable·Tangible·Transparent·Trustworthy)",
+      "system_version": "ESG GO v0.12 (InfoOne Core)"
+    },
+    "tangible": {
+      "evidence": {
+        "checks": {
+          "Tangible": true,
+          "Traceable": true,
+          "Trackable": true,
+          "Transparent": true,
+          "Trustworthy": true
+        },
+        "hash_lock": "1518e9da032400302f167ed4ca59a19ac3bdae6b6a465ae33097b92848d0d6c5",
+        "kind": "5T-Canon-Proof-M3-語音合成"
+      },
+      "module_probe": {
+        "callable": true,
+        "function_exists": true,
+        "module_file": "C:\\Project\\aistation\\src\\tts.py",
+        "module_imported": true,
+        "module_sha256": "2534b856625e754714648e541a42674c042716726a32719fa67b57a3c0943bd7"
+      },
+      "quality_gate": "PASSED"
+    },
+    "traceable": {
+      "evidence_chain": "Module probe → artifact → 5T gate → Hash Lock → 凍結",
+      "source_origin": "OA-Team-30-Swarm::AIStation::M3::tts::inclusionai/ling-3.0-flash-fin:free",
+      "sources": [
+        "OA-Team 30 Soul Canon §9.3 7 模組生產線",
+        "aistation/src/gate5t.py PurifiedArtifact",
+        "aistation/src/tts.py",
+        "Real probe: module imported=True",
+        "Real probe: function callable=True"
+      ],
+      "uuid": "2e99bfe4-7d24-432f-bdeb-70880608132d"
+    },
+    "trackable": {
+      "iso_8601": "2026-09-04T10:13:58Z",
+      "lifecycle_hooks": [
+        "module_probe::M3",
+        "extract_essence",
+        "swarm_dispatch",
+        "5t_verification",
+        "hash_lock",
+        "freeze"
+      ],
+      "timestamp": 1788516838
+    },
+    "transparent": {
+      "algorithm_open": "src/tts.py",
+      "module_sha256": "2534b856625e754714648e541a42674c042716726a32719fa67b57a3c0943bd7",
+      "transparent_audit": true,
+      "version": "ESG GO v0.12 (InfoOne Core)",
+      "zero_hallucination": "verified-via-real-probe"
+    },
+    "trustworthy": {
+      "frozen": true,
+      "hash_lock": "1518e9da032400302f167ed4ca59a19ac3bdae6b6a465ae33097b92848d0d6c5",
+      "immutable": true,
+      "object_freeze": "@dataclass(frozen=True)"
+    }
+  }
+}
