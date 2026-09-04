@@ -43,12 +43,36 @@
 - ✅ **失敗 video_url 為 None 時處理**：webhook 回傳新增 `ok` 旗標（`status==done` 且有 `video_url` 才 True），`video_url=None` 時 `ok=False` 且 `error` 回填；n8n 呼叫方可直接 `if (body.ok)` 分支，不再依賴 None 判斷。新增 `test_webhook_ok_flag_reflects_video` 回歸。
 
 ## 7. 測試 / Testing
+<<<<<<< Updated upstream
 - ✅ **pytest 50 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook/metrics/incremental**（CI 綠燈；2 ffmpeg E2E 在無 ffmpeg 環境自動 skip）。
 - ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
 - ✅ **測試不污染真實狀態**：render 類測試加 `isolated_state` fixture，把 `jobs.db` + `STORAGE_DIR` 導向 tmp（不再寫入 repo 根目錄）。
 - ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback / submit 失敗 單元測試已加**。
 - ✅ **§12 增量優化 21 測項全過**：`tests/test_incremental.py` 覆蓋 StreamBuffer/WorkerPool/DeltaTracker/CompressionEngine/LRUCache/paginate + 六模式 5T 驗證閘；全 suite 50 passed（2 ffmpeg skip）。
+=======
+|- ✅ **pytest 68 測試涵蓋 config/parser/tts/renderer/db/api/ci/security/integration/runway/openai/webhook/metrics/gate5t/kpi/newsletter**（CI 綠燈）。
+|- ✅ **E2E ffmpeg 渲染進 suite**：`test_integration_render_runs_ffmpeg` 跑真 ffmpeg（CI 已裝）；無 ffmpeg 時自動 skip。
+|- ✅ **測試不污染真實狀態**：render 類測試加 `isolated_state` fixture，把 `jobs.db` + `STORAGE_DIR` 導向 tmp（不再寫入 repo 根目錄）。
+|- ✅ **`build_srt` / `parse_openai` / `generate_broll` fallback / submit 失敗 單元測試已加**。
+|- ✅ **5T gate + entropy + 5T audit 全面測試**：`test_chapter10.py` (21 cases), `test_entropy.py` (11 cases), `test_audit_5t.py` (7 cases) — 全部全綠。
+|- ✅ **`test_api_series_endpoint` 偶發紅 (flaky) 修復**：原測試對 `/api/jobs` 提交「真實」job（edge-tts 網路 + ffmpeg 渲染）後輪詢 60s 等 `done`，在全集負載下共用 2-worker 執行緒池常來不及 → 偶發 `assert 'queued' == 'done'`。本測試名義是驗證 series/brand **API 合約**，完整渲染生命週期已由 `test_integration_render_runs_ffmpeg`（真 ffmpeg E2E）涵蓋。修法：斷言 `queued` + `job_id` 合約並確認 job 紀錄存在即返回，不再阻塞於真實渲染。這同時揭露舊 TODO 聲稱「pytest 79 passed, 2 skipped — CI 綠燈」**並不準確**（實際曾 1 失敗）；已以真實 pytest 跑分校正。
+
+## 8. 熵減與 5T 稽核 / Entropy Reduction & 5T Audit (§23 §24)
+|- ✅ **Entropy monitor (`src/entropy.py`)**：從 `jobs.db` 實時計算熵值，組件 = job_failure_rate(40%) + lifecycle_incompleteness(30%) + 5t_audit_failure(30%)。目標 < 0.1，目前實測 0.0022。
+|- ✅ **5T audit sweep (`scripts/audit_5t.py`)**：掃瞄 `storage/artifacts/` 中所有凍結 JSON，驗證 Hash Lock + 5T gate，分類為 verified/tampered/5t_failed/parse_error。
+|- ✅ **Daily cron watch** (`entropy-5t-audit-daily`)：`0 9 * * *` 每日執行 entropy 計算 + 5T audit，若 WARN/CRIT 自動觸發 `weekly_report.py --dry-run` 進行升級報告。
+|- ✅ **Weekly swarm report (`scripts/weekly_report.py`)**：整合 kpi → gate5t → newsletter，支援 `--dry-run` / `--channels` / KPI overrides。
+>>>>>>> Stashed changes
 
 ---
 
+<<<<<<< Updated upstream
 下一步建議優先序：真 Runway B-roll 實測（待 `RUNWAY_API_KEY`）。其餘 ①②③④⑤⑥⑦ 已修 + §12 增量優化已落地。
+=======
+**5T Verification:**
+- **Traceable**: `src/entropy.py`、`scripts/audit_5t.py`、`scripts/weekly_report.py`、`tests/test_aistation.py` 實體碼來源 `C:/Project/aistation/`
+- **Trackable**: pytest 全綠（2026-08-28 實測重跑；原聲稱「79 passed」經核對曾含 1 偶發失敗，已修復）
+- **Tangible**: `curl -sf http://localhost:8787/health` → `{"status":"ok"}`
+- **Transparent**: entropy=0.0022, 0 tampered/5t_failed；舊 TODO「CI 綠燈」不準確已校正
+- **Trustworthy**: `gate5t.lock_artifact` frozen dataclass, `verify_locked` Hash Lock 驗證
+>>>>>>> Stashed changes
