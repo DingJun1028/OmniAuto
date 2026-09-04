@@ -1,0 +1,66 @@
+{
+  "started": "2026-09-04T18:49:16.662653",
+  "finished": "2026-09-04T18:49:30.565054",
+  "duration_s": 13.902401,
+  "steps": {
+    "primary": 0,
+    "cross": 0,
+    "modules": 0
+  },
+  "qc_results": {
+    "primary": {
+      "passed": true,
+      "hash_lock": "ac41581f99be2d00b8fca95389dda1cbf7fa738e88cc22b531b467f8076ce766",
+      "uuid": "693fe674-bed3-4af1-9672-aebecf3ecf90",
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      }
+    },
+    "crossA": {
+      "passed": true,
+      "hash_lock": "9d473bb42dc8fb977396d17767643f8fed1e46669cad8fcadac9af65a4ddd00e",
+      "uuid": "c16a83e0-3ed7-4822-8adb-e26e87b845b7",
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      }
+    },
+    "crossB": {
+      "passed": true,
+      "hash_lock": "dd8594de70391562f42b99d569ccf79d3245e27f66a79058f5242b554aa44ebe",
+      "uuid": "8c1cc01d-55b2-4986-8e1e-9195fd261a20",
+      "checks": {
+        "Tangible": true,
+        "Traceable": true,
+        "Trackable": true,
+        "Transparent": true,
+        "Trustworthy": true
+      }
+    },
+    "modules": {
+      "passed": true,
+      "total": 7
+    }
+  },
+  "kb_results": {
+    "tdai_written": false,
+    "vault_written": true,
+    "errors": [
+      "tdai ConnectError"
+    ],
+    "moc_path": "C:\\Users\\dingj\\iCloudDrive\\iCloud~md~obsidian\\DingJun\\04-Index\\5T-Canon-Daily.md"
+  },
+  "ops_results": {
+    "dispatched": true,
+    "entropy": 0.0,
+    "escalation": "OK",
+    "failures": 0
+  }
+}
