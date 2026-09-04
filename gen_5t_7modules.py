@@ -184,15 +184,25 @@ def main():
 
     results = []
     for mod_id, name, code_module, code_fn, desc in MODULES:
-        print(f"\n[{mod_id}] {name} ({code_module}.{code_fn})")
-        r = gen_module_proof(mod_id, name, code_module, code_fn, desc)
-        ok = r["report"].passed and r["probe"]["module_imported"]
-        if code_fn:
-            ok = ok and r["probe"]["function_exists"]
-        marker = "✅" if ok else "⚠️"
-        print(f"  {marker} 5T_PASS={r['report'].passed}  module={r['probe']['module_imported']}  fn={r['probe']['function_exists']}")
-        print(f"    hash={r['locked'].hash_lock[:24]}...")
-        results.append((mod_id, name, r, ok))
+        print(f"\n[{mod_id}] {name} ({code_module}.{code_fn})", flush=True)
+        try:
+            r = gen_module_proof(mod_id, name, code_module, code_fn, desc)
+            ok = r["report"].passed and r["probe"]["module_imported"]
+            if code_fn:
+                ok = ok and r["probe"]["function_exists"]
+            marker = "✅" if ok else "⚠️"
+            print(f"  {marker} 5T_PASS={r['report'].passed}  module={r['probe']['module_imported']}  fn={r['probe']['function_exists']}", flush=True)
+            print(f"    hash={r['locked'].hash_lock[:24]}...", flush=True)
+            results.append((mod_id, name, r, ok))
+        except Exception as e:
+            # Don't let one module's failure cascade — log + continue
+            print(f"  ⚠️ SKIPPED due to: {type(e).__name__}: {e}", flush=True)
+            # Mark as failed but don't break the loop
+            fake_r = {"report": type("R", (), {"passed": False})(),
+                      "probe": {"module_imported": False, "function_exists": False, "module_sha256": ""},
+                      "locked": type("L", (), {"hash_lock": ""})(),
+                      "component": {}}
+            results.append((mod_id, name, fake_r, False))
 
     print(f"\n{'=' * 70}")
     print("  Writing 7 module proofs to disk")
