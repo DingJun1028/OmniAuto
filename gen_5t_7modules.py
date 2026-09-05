@@ -12,6 +12,17 @@ Module map (per soul.md §9.3 + §9.5):
 from __future__ import annotations
 
 import sys
+import os
+# Defense: in Windows cron envs without PYTHONIOENCODING, stdout defaults to cp950
+# (Big5) and emoji like ✅ ⚠️ crash the process with UnicodeEncodeError.
+# Force UTF-8 for stdout/stderr BEFORE any other import that might print.
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
+except (AttributeError, OSError):
+    pass
+
 from pathlib import Path as _Path
 
 # Defense: when invoked via subprocess from a different cwd, ensure the
